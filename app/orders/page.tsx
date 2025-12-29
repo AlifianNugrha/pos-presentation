@@ -40,14 +40,50 @@ export default function OrdersPage() {
     { id: "4", number: 4, status: "available" },
     { id: "5", number: 5, status: "available" },
     { id: "6", number: 6, status: "occupied" },
+    { id: "7", number: 7, status: "available" },
+    { id: "8", number: 8, status: "available" },
   ])
 
   const [selectedTableId, setSelectedTableId] = useState<string>("1")
 
+  // Menu yang diperbanyak dengan gambar riil
   const menuItems: MenuItem[] = [
-    { id: "1", name: "Nasi Goreng Special", price: 30000, category: "Makanan", image: "/nasi-goreng.jpg" },
-    { id: "2", name: "Es Teh Manis", price: 5000, category: "Minuman", image: "/es-teh.png" },
-    { id: "3", name: "Ayam Bakar", price: 35000, category: "Makanan", image: "/ayam-bakar.jpg" },
+    {
+      id: "1", name: "Nasi Goreng Special", price: 30000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1512058560366-cd242d4587ee?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "2", name: "Mie Ayam Pangsit", price: 22000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1585032226651-759b368d7246?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "3", name: "Ayam Bakar", price: 35000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "4", name: "Bakso Sapi Urat", price: 25000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1529042410759-befb1204b468?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "5", name: "Mie Goreng Jawa", price: 22000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1612929633738-8fe44f7ec841?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "6", name: "Soto Ayam Madura", price: 25000, category: "Makanan",
+      image: "https://images.unsplash.com/photo-1547592166-23ac45744acd?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "7", name: "Es Teh Manis", price: 5000, category: "Minuman",
+      image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "8", name: "Jus Alpukat", price: 15000, category: "Minuman",
+      image: "https://images.unsplash.com/photo-1517089534792-804a3a91dcb8?q=80&w=500&auto=format&fit=crop"
+    },
+    {
+      id: "9", name: "Kopi Susu", price: 12000, category: "Minuman",
+      image: "https://images.unsplash.com/photo-1512568448817-1c970ff48b91?q=80&w=500&auto=format&fit=crop"
+    },
   ]
 
   const addToCart = (item: MenuItem) => {
@@ -69,35 +105,46 @@ export default function OrdersPage() {
 
       <main className="container mx-auto px-4 py-6 grid lg:grid-cols-12 gap-6 flex-1">
 
-        {/* KOLOM KIRI: MENU (8 Kolom) */}
+        {/* KOLOM KIRI: MENU */}
         <div className="lg:col-span-8 space-y-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Cari menu makanan..." className="pl-10 h-12" />
+            <Input
+              placeholder="Cari menu makanan..."
+              className="pl-10 h-12"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {menuItems.map((item) => (
-              <Card
-                key={item.id}
-                className="p-3 hover:border-primary cursor-pointer transition-all"
-                onClick={() => addToCart(item)}
-              >
-                <div className="aspect-video bg-muted rounded-md mb-3 flex items-center justify-center text-xs text-muted-foreground">
-                  Foto {item.name}
-                </div>
-                <h3 className="font-bold text-sm">{item.name}</h3>
-                <p className="text-primary font-bold">Rp {item.price.toLocaleString()}</p>
-              </Card>
-            ))}
+            {menuItems
+              .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
+              .map((item) => (
+                <Card
+                  key={item.id}
+                  className="p-3 hover:border-primary cursor-pointer transition-all"
+                  onClick={() => addToCart(item)}
+                >
+                  <div className="aspect-video bg-muted rounded-md mb-3 overflow-hidden">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-full object-cover transition-transform hover:scale-110 duration-300"
+                    />
+                  </div>
+                  <h3 className="font-bold text-sm line-clamp-1">{item.name}</h3>
+                  <p className="text-primary font-bold">Rp {item.price.toLocaleString()}</p>
+                </Card>
+              ))}
           </div>
         </div>
 
-        {/* KOLOM KANAN: KERANJANG & PILIH MEJA (4 Kolom) */}
+        {/* KOLOM KANAN: KERANJANG & PILIH MEJA */}
         <div className="lg:col-span-4">
           <Card className="flex flex-col h-[calc(100vh-120px)] sticky top-6 overflow-hidden border-2">
 
-            {/* Bagian 1: List Pesanan */}
+            {/* List Pesanan */}
             <div className="p-4 border-b bg-secondary/10">
               <div className="flex items-center gap-2 font-bold uppercase text-xs tracking-wider text-muted-foreground">
                 <ShoppingCart className="h-4 w-4" /> Detail Pesanan
@@ -117,7 +164,7 @@ export default function OrdersPage() {
               )}
             </div>
 
-            {/* Bagian 2: VISUAL PILIH MEJA (Didekat Tombol Kirim) */}
+            {/* VISUAL PILIH MEJA */}
             <div className="p-4 border-t bg-card space-y-3">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold uppercase text-muted-foreground flex items-center gap-1">
@@ -128,7 +175,6 @@ export default function OrdersPage() {
                 </Badge>
               </div>
 
-              {/* Grid Meja Kecil */}
               <div className="grid grid-cols-4 gap-2">
                 {tables.map((table) => (
                   <button
@@ -160,7 +206,7 @@ export default function OrdersPage() {
               )}
             </div>
 
-            {/* Bagian 3: Total & Tombol Kirim */}
+            {/* Total & Tombol Kirim */}
             <div className="p-4 bg-secondary/20 border-t space-y-3">
               <div className="flex justify-between items-center text-lg font-black">
                 <span>TOTAL</span>
