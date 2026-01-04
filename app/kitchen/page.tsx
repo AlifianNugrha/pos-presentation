@@ -1,268 +1,240 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { supabase } from "@/lib/supabase"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Clock, CheckCircle, XCircle, ChefHat } from "lucide-react"
-
-type OrderStatus = "pending" | "preparing" | "ready" | "served"
-
-type KitchenOrder = {
-  id: string
-  tableNumber: number
-  items: { name: string; quantity: number; notes?: string }[]
-  status: OrderStatus
-  orderTime: string
-  waitTime: string
-  priority: "normal" | "high"
-  zone: "Hot Kitchen" | "Cold Kitchen" | "Grill" | "Bar"
-}
+import {
+  CheckCircle, ChefHat, Loader2, Flame,
+  Clock, Hash, ChevronRight, AlertCircle,
+  Users, ShoppingBag
+} from "lucide-react"
 
 export default function KitchenPage() {
-  const [orders, setOrders] = useState<KitchenOrder[]>([
-    {
-      id: "001",
-      tableNumber: 5,
-      items: [
-        { name: "Nasi Goreng Special", quantity: 2, notes: "Pedas level 3" },
-        { name: "Ayam Bakar", quantity: 1 },
-      ],
-      status: "pending",
-      orderTime: "14:35",
-      waitTime: "2 min",
-      priority: "high",
-      zone: "Hot Kitchen",
-    },
-    {
-      id: "002",
-      tableNumber: 8,
-      items: [
-        { name: "Es Teh Manis", quantity: 3 },
-        { name: "Jus Alpukat", quantity: 2 },
-      ],
-      status: "preparing",
-      orderTime: "14:32",
-      waitTime: "5 min",
-      priority: "normal",
-      zone: "Bar",
-    },
-    {
-      id: "003",
-      tableNumber: 2,
-      items: [
-        { name: "Soto Ayam", quantity: 2 },
-        { name: "Nasi Putih", quantity: 2 },
-      ],
-      status: "preparing",
-      orderTime: "14:28",
-      waitTime: "9 min",
-      priority: "normal",
-      zone: "Hot Kitchen",
-    },
-    {
-      id: "004",
-      tableNumber: 11,
-      items: [{ name: "Steak Daging", quantity: 1, notes: "Medium rare" }],
-      status: "preparing",
-      orderTime: "14:25",
-      waitTime: "12 min",
-      priority: "high",
-      zone: "Grill",
-    },
-    {
-      id: "005",
-      tableNumber: 4,
-      items: [{ name: "Salad Caesar", quantity: 2 }],
-      status: "ready",
-      orderTime: "14:20",
-      waitTime: "17 min",
-      priority: "normal",
-      zone: "Cold Kitchen",
-    },
-  ])
+  const [orders, setOrders] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
-  const [selectedZone, setSelectedZone] = useState<string>("Semua")
-  const zones = ["Semua", "Hot Kitchen", "Cold Kitchen", "Grill", "Bar"]
+  const [tableStats, setTableStats] = useState({
+    total: 12,
+    occupied: 0,
+    available: 12,
+    reserved: 0
+  })
 
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders((prev) => prev.map((order) => (order.id === orderId ? { ...order, status: newStatus } : order)))
-  }
+  const fetchTableStatus = useCallback(async () => {
+    try {
+      const { data: tablesData } = await supabase
+        .from('tables')
+        .select('status')
 
-  const filteredOrders = selectedZone === "Semua" ? orders : orders.filter((order) => order.zone === selectedZone)
+      if (tablesData) {
+        setTableStats({
+          total: 12,
+          occupied: tablesData.filter(t => t.status === 'occupied').length,
+          available: tablesData.filter(t => t.status === 'available').length,
+          reserved: tablesData.filter(t => t.status === 'reserved').length
+        })
+      }
+    } catch (err) {
+      console.error("Table Stats Error:", err)
+    }
+  }, [])
 
-  const getStatusColor = (status: OrderStatus) => {
-    switch (status) {
-      case "pending":
-        return "bg-chart-4 text-white"
-      case "preparing":
-        return "bg-primary text-primary-foreground"
-      case "ready":
-        return "bg-chart-3 text-white"
-      case "served":
-        return "bg-muted text-muted-foreground"
+  const fetchOrders = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select('*')
+        .in('status', ['pending', 'preparing', 'ready'])
+        .order('created_at', { ascending: true })
+
+      if (error) throw error
+      setOrders(data || [])
+    } catch (err) {
+      console.error("Fetch error:", err)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const getStatusText = (status: OrderStatus) => {
-    switch (status) {
-      case "pending":
-        return "Menunggu"
-      case "preparing":
-        return "Diproses"
-      case "ready":
-        return "Siap"
-      case "served":
-        return "Terkirim"
+  useEffect(() => {
+    setMounted(true)
+    fetchOrders()
+    fetchTableStatus()
+
+    const channel = supabase
+      .channel('kitchen-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => {
+        fetchOrders()
+        fetchTableStatus()
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => {
+        fetchTableStatus()
+      })
+      .subscribe()
+
+    return () => { supabase.removeChannel(channel) }
+  }, [fetchTableStatus])
+
+  const updateStatus = async (id: string, newStatus: string, tableNumber?: number) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', id)
+
+      if (error) throw error
+      fetchOrders()
+    } catch (err: any) {
+      console.error("Update error:", err.message)
     }
   }
 
-  const stats = {
-    pending: orders.filter((o) => o.status === "pending").length,
-    preparing: orders.filter((o) => o.status === "preparing").length,
-    ready: orders.filter((o) => o.status === "ready").length,
-  }
+  if (!mounted || loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50/50 dark:bg-background font-[family-name:var(--font-poppins)]">
+      <Loader2 className="animate-spin h-8 w-8 text-indigo-600" />
+    </div>
+  )
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground">Kitchen Display System</h1>
-              <p className="text-sm text-muted-foreground">Monitor & Kelola Pesanan Dapur</p>
+    <div className="min-h-screen bg-slate-50/50 dark:bg-background font-[family-name:var(--font-poppins)]">
+      <header className="border-b bg-background/80 backdrop-blur-xl sticky top-0 z-40">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-600 rounded-xl shadow-lg shadow-indigo-200 dark:shadow-none">
+              <ChefHat className="h-5 w-5 text-white" />
             </div>
-            <ChefHat className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none tracking-tight">Kitchen Display</h1>
+              <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">Real-time Order Monitor</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="bg-white dark:bg-slate-900 border-slate-200 text-indigo-600 font-bold px-3 py-1 text-[10px] tracking-wider">
+              {orders.length} ACTIVE ORDERS
+            </Badge>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-6 py-6">
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <Card className="p-4 bg-card border-chart-4/50 bg-chart-4/5">
-            <p className="text-sm text-muted-foreground mb-1">Menunggu</p>
-            <p className="text-3xl font-bold text-chart-4">{stats.pending}</p>
+      <main className="container mx-auto p-4 sm:p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <Card className="p-4 border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Meja</p>
+            <p className="text-2xl font-bold text-slate-900 dark:text-white">{tableStats.total}</p>
           </Card>
-          <Card className="p-4 bg-card border-primary/50 bg-primary/5">
-            <p className="text-sm text-muted-foreground mb-1">Diproses</p>
-            <p className="text-3xl font-bold text-primary">{stats.preparing}</p>
+          <Card className="p-4 border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
+            <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1">Terisi</p>
+            <p className="text-2xl font-bold text-rose-600">{tableStats.occupied}</p>
           </Card>
-          <Card className="p-4 bg-card border-chart-3/50 bg-chart-3/5">
-            <p className="text-sm text-muted-foreground mb-1">Siap</p>
-            <p className="text-3xl font-bold text-chart-3">{stats.ready}</p>
+          <Card className="p-4 border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
+            <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-1">Tersedia</p>
+            <p className="text-2xl font-bold text-emerald-600">{tableStats.available}</p>
+          </Card>
+          <Card className="p-4 border-none shadow-sm bg-white dark:bg-slate-900 rounded-2xl">
+            <p className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-1">Reserved</p>
+            <p className="text-2xl font-bold text-amber-600">{tableStats.reserved}</p>
           </Card>
         </div>
 
-        {/* Zone Filter */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
-          {zones.map((zone) => (
-            <Button
-              key={zone}
-              variant={selectedZone === zone ? "default" : "outline"}
-              onClick={() => setSelectedZone(zone)}
-              className="whitespace-nowrap"
-            >
-              {zone}
-            </Button>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {orders.map((order) => {
+            const isPreparing = order.status === 'preparing';
+            const isReady = order.status === 'ready';
+            const isNew = order.status === 'pending';
+            const isTakeaway = order.table_number === 0;
 
-        {/* Orders Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredOrders.map((order) => (
-            <Card
-              key={order.id}
-              className={`p-5 bg-card border-2 ${order.priority === "high" ? "border-destructive" : "border-border"}`}
-            >
-              {/* Order Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground">Meja {order.tableNumber}</h3>
-                  <p className="text-xs text-muted-foreground">Order #{order.id}</p>
-                </div>
-                <Badge className={getStatusColor(order.status)}>{getStatusText(order.status)}</Badge>
-              </div>
+            return (
+              <Card key={order.id} className={`flex flex-col border-none shadow-sm transition-all duration-300 rounded-[2rem] overflow-hidden bg-white dark:bg-slate-900 group ${isPreparing ? 'ring-2 ring-indigo-500 shadow-indigo-100' : ''}`}>
+                <div className={`h-1.5 w-full ${isNew ? 'bg-orange-500' : isPreparing ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
 
-              {/* Time Info */}
-              <div className="flex items-center gap-4 mb-4 p-3 bg-secondary/50 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-semibold text-foreground">{order.orderTime}</span>
-                </div>
-                <div className="h-4 w-px bg-border" />
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-bold ${
-                      Number.parseInt(order.waitTime) > 10 ? "text-destructive" : "text-chart-3"
-                    }`}
-                  >
-                    ⏱ {order.waitTime}
-                  </span>
-                </div>
-                <Badge variant="outline" className="ml-auto text-xs">
-                  {order.zone}
-                </Badge>
-              </div>
-
-              {/* Order Items */}
-              <div className="space-y-2 mb-4">
-                {order.items.map((item, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <Badge variant="secondary" className="mt-0.5 text-xs">
-                      {item.quantity}x
-                    </Badge>
-                    <div className="flex-1">
-                      <p className="font-semibold text-foreground text-sm">{item.name}</p>
-                      {item.notes && <p className="text-xs text-destructive italic">📝 {item.notes}</p>}
+                <div className="p-5 flex flex-col h-full">
+                  <div className="flex justify-between items-start mb-5">
+                    <div>
+                      <div className="flex items-center gap-2 text-slate-400 mb-1">
+                        <Hash className="h-3 w-3" />
+                        <span className="text-[10px] font-bold uppercase tracking-tighter">Ref: {order.id.slice(0, 5)}</span>
+                      </div>
+                      <h2 className={`text-2xl font-bold tracking-tight Poppins flex items-center gap-2 ${isTakeaway ? 'text-orange-600' : 'text-slate-900 dark:text-white'}`}>
+                        {isTakeaway ? (
+                          <>
+                            <ShoppingBag className="h-6 w-6" /> TAKEAWAY
+                          </>
+                        ) : (
+                          `MEJA ${order.table_number}`
+                        )}
+                      </h2>
                     </div>
+                    <Badge className={`rounded-lg px-2 py-0.5 text-[9px] font-bold uppercase border-none ${isPreparing ? 'bg-indigo-50 text-indigo-600' :
+                      isReady ? 'bg-emerald-50 text-emerald-600' : 'bg-orange-50 text-orange-600'
+                      }`}>
+                      {order.status}
+                    </Badge>
                   </div>
-                ))}
-              </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                {order.status === "pending" && (
-                  <>
-                    <Button size="sm" className="flex-1" onClick={() => updateOrderStatus(order.id, "preparing")}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Mulai Masak
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => updateOrderStatus(order.id, "served")}>
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </>
-                )}
-                {order.status === "preparing" && (
-                  <Button
-                    size="sm"
-                    className="flex-1 bg-chart-3 hover:bg-chart-3/90"
-                    onClick={() => updateOrderStatus(order.id, "ready")}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-1" />
-                    Selesai
-                  </Button>
-                )}
-                {order.status === "ready" && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="flex-1 bg-transparent"
-                    onClick={() => updateOrderStatus(order.id, "served")}
-                  >
-                    Sudah Diantar
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
+                  <div className="space-y-3 flex-1 mb-6">
+                    {order.items?.map((item: any, idx: number) => (
+                      <div key={idx} className="flex gap-4 p-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                        <div className="h-8 w-8 shrink-0 rounded-xl bg-indigo-600 flex items-center justify-center shadow-md shadow-indigo-100 dark:shadow-none">
+                          <span className="font-bold text-white text-sm">{item.quantity}</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[13px] font-bold text-slate-800 dark:text-slate-100 uppercase tracking-tight leading-tight">{item.name}</p>
+                          {item.notes && item.notes !== "-" && (
+                            <div className="flex items-center gap-1.5 mt-1.5 text-rose-500 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-md w-fit">
+                              <AlertCircle className="h-3 w-3" />
+                              <p className="text-[10px] font-bold uppercase tracking-tight">{item.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-auto">
+                    {order.status === 'pending' && (
+                      <Button
+                        className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold uppercase text-[11px] tracking-widest h-12 rounded-2xl transition-all shadow-lg shadow-orange-100 border-none"
+                        onClick={() => updateStatus(order.id, 'preparing')}
+                      >
+                        <Flame className="h-4 w-4 mr-2" /> Mulai Masak
+                      </Button>
+                    )}
+
+                    {order.status === 'preparing' && (
+                      <Button
+                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase text-[11px] tracking-widest h-12 rounded-2xl transition-all shadow-lg shadow-indigo-100 border-none"
+                        onClick={() => updateStatus(order.id, 'ready')}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" /> Selesai Masak
+                      </Button>
+                    )}
+
+                    {order.status === 'ready' && (
+                      <Button
+                        variant="outline"
+                        className="w-full border-2 border-emerald-500 text-emerald-600 hover:bg-emerald-50 font-bold uppercase text-[11px] tracking-widest h-12 rounded-2xl transition-all"
+                        onClick={() => updateStatus(order.id, 'served')}
+                      >
+                        {isTakeaway ? 'Siap Diambil' : 'Antarkan Pesanan'} <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
 
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
-            <ChefHat className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-lg text-muted-foreground">Tidak ada pesanan di zona ini</p>
+        {orders.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-40 animate-in fade-in zoom-in duration-700">
+            <div className="p-8 bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm mb-6">
+              <ChefHat className="h-16 w-16 text-indigo-100 dark:text-slate-800" />
+            </div>
+            <h3 className="text-slate-900 dark:text-white font-bold text-xl tracking-tight">Dapur Bersih!</h3>
+            <p className="text-slate-500 text-sm font-medium mt-1">Semua pesanan sudah selesai diproses.</p>
           </div>
         )}
       </main>
