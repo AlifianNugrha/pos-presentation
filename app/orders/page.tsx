@@ -11,7 +11,7 @@ import {
   Search, ShoppingCart, Plus,
   Trash2, Loader2, ImagePlus, Minus,
   ChevronLeft, ReceiptText, MessageSquare,
-  Sparkles, Layers, Utensils, ShoppingBag
+  Sparkles, Utensils, ShoppingBag
 } from "lucide-react"
 import Link from "next/link"
 
@@ -58,7 +58,6 @@ export default function OrdersPage() {
     const tableChannel = supabase
       .channel('table-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => fetchTableStatuses())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchTableStatuses())
       .subscribe()
 
     return () => {
@@ -91,13 +90,13 @@ export default function OrdersPage() {
 
   const handleAddMenu = async () => {
     if (!formData.name || !formData.price || !selectedFile) {
-      toast.error("Isi data menu dengan lengkap!")
+      toast.error("Lengkapi data menu!")
       return
     }
     setUploading(true)
     try {
       const fileExt = selectedFile.name.split('.').pop()
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const fileName = `${Date.now()}.${fileExt}`
       const filePath = `menu/${fileName}`
 
       const { error: uploadError } = await supabase.storage
@@ -106,23 +105,21 @@ export default function OrdersPage() {
 
       if (uploadError) throw uploadError
 
-      const { data: urlData } = supabase.storage
-        .from('menu-images')
-        .getPublicUrl(filePath)
+      const { data: urlData } = supabase.storage.from('menu-images').getPublicUrl(filePath)
 
       const { error: dbError } = await supabase.from('menu_items').insert([
         {
           name: formData.name,
           price: Number(formData.price),
           image: urlData.publicUrl,
-          category: "Makanan"
+          category: "General"
         }
       ])
       if (dbError) throw dbError
-      toast.success("Menu berhasil ditambahkan")
+      toast.success("Menu ditambahkan")
       setFormData({ name: "", price: "" }); setSelectedFile(null);
     } catch (error: any) {
-      toast.error("Gagal menyimpan: " + error.message)
+      toast.error("Gagal: " + error.message)
     } finally {
       setUploading(false)
     }
@@ -130,7 +127,7 @@ export default function OrdersPage() {
 
   const handleDeleteMenu = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm("Hapus menu ini secara permanen?")) {
+    if (confirm("Hapus menu ini?")) {
       const { error } = await supabase.from('menu_items').delete().eq('id', id)
       if (!error) toast.success("Menu dihapus")
     }
@@ -158,11 +155,18 @@ export default function OrdersPage() {
 
   const handleSendToKitchen = async () => {
     if (cart.length === 0) return
-    const toastId = toast.loading("Memproses pesanan...")
+
+    // Validasi Meja jika Dine In
+    if (orderType === 'dine_in' && occupiedTables.includes(parseInt(selectedTableId))) {
+      toast.error("Meja ini masih terisi!");
+      return;
+    }
+
+    const toastId = toast.loading("Mengirim pesanan ke dapur...")
     setIsSending(true)
 
     try {
-      // 1. INPUT KE TABEL ORDERS (Untuk Monitor Dapur)
+      // 1. INPUT KE TABEL ORDERS (Hanya ini untuk pesanan baru)
       const { error: orderError } = await supabase
         .from('orders')
         .insert([
@@ -182,21 +186,7 @@ export default function OrdersPage() {
 
       if (orderError) throw orderError
 
-      // 2. INPUT KE TABEL REVENUE (Agar Langsung Masuk History/Dashboard)
-      const { error: revenueError } = await supabase
-        .from('revenue')
-        .insert([
-          {
-            table_number: orderType === 'takeaway' ? 0 : parseInt(selectedTableId),
-            total_amount: total,
-            payment_method: "Tunai", // Default
-            created_at: new Date().toISOString()
-          }
-        ])
-
-      if (revenueError) throw revenueError
-
-      // 3. Update status meja jika dine-in
+      // 2. Update status meja jika dine-in
       if (orderType === 'dine_in') {
         const { error: tableError } = await supabase
           .from('tables')
@@ -205,7 +195,7 @@ export default function OrdersPage() {
         if (tableError) throw tableError
       }
 
-      toast.success(orderType === 'takeaway' ? "Takeaway Berhasil Dicatat!" : `Meja #${selectedTableId} Berhasil!`, { id: toastId })
+      toast.success("Pesanan berhasil dikirim!", { id: toastId })
       setCart([])
       fetchTableStatuses()
     } catch (error: any) {
@@ -232,62 +222,66 @@ export default function OrdersPage() {
             <div>
               <h1 className="text-xl font-black uppercase tracking-tight">Point of Sale</h1>
               <p className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-2 mt-0.5 tracking-[0.2em]">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> System Online
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> Kitchen Linked
               </p>
             </div>
           </div>
-          <Badge variant="outline" className="border-indigo-200 text-indigo-600 bg-indigo-50 font-black text-[10px] uppercase tracking-widest rounded-full px-3 py-1">
-            {menuItems.length} Menu Ready
+          <Badge variant="outline" className="border-indigo-200 text-indigo-600 bg-indigo-50 font-black text-[10px] rounded-full px-3 py-1 uppercase">
+            {menuItems.length} Items Available
           </Badge>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 grid lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
-          <Card className="p-6 border-none shadow-xl bg-white/80 dark:bg-slate-900/80 backdrop-blur-md rounded-[2.5rem]">
+          {/* Add Menu Section */}
+          <Card className="p-6 border-none shadow-sm bg-card rounded-[2rem]">
             <div className="flex items-center gap-2 mb-4">
               <Sparkles className="h-4 w-4 text-indigo-500" />
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">Add New Menu</h3>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Quick Add Menu</h3>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Input className="bg-slate-100 dark:bg-slate-800 border-none text-[11px] h-11 rounded-2xl font-bold" placeholder="Menu Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-              <Input className="bg-slate-100 dark:bg-slate-800 border-none text-[11px] h-11 rounded-2xl font-bold" type="number" placeholder="Price" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <Input className="bg-muted border-none text-xs h-10 rounded-xl" placeholder="Nama Menu" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
+              <Input className="bg-muted border-none text-xs h-10 rounded-xl" type="number" placeholder="Harga" value={formData.price} onChange={(e) => setFormData({ ...formData, price: e.target.value })} />
               <div className="relative group">
                 <input type="file" accept="image/*" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                <Button variant="outline" className="w-full justify-start gap-2 border-dashed border-2 border-slate-200 dark:border-slate-700 h-11 text-[11px] rounded-2xl font-bold">
-                  <ImagePlus className="h-4 w-4 shrink-0 text-indigo-500" />
-                  <span className="truncate">{selectedFile ? selectedFile.name : "Choose Image"}</span>
+                <Button variant="outline" className="w-full justify-start gap-2 border-dashed h-10 text-xs rounded-xl overflow-hidden">
+                  <ImagePlus className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{selectedFile ? selectedFile.name : "Foto"}</span>
                 </Button>
               </div>
-              <Button onClick={handleAddMenu} disabled={uploading} className="bg-slate-900 dark:bg-indigo-600 h-11 text-[11px] rounded-2xl font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-lg border-none text-white">
-                {uploading ? <Loader2 className="animate-spin" /> : "Save Menu"}
+              <Button onClick={handleAddMenu} disabled={uploading} className="h-10 text-xs rounded-xl font-bold uppercase">
+                {uploading ? <Loader2 className="animate-spin" /> : "Simpan"}
               </Button>
             </div>
           </Card>
 
+          {/* Menu Search & Grid */}
           <div className="space-y-6">
-            <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search menu..."
-                className="pl-12 h-14 bg-white dark:bg-slate-900 border-none shadow-xl rounded-[2rem] text-sm font-bold transition-all focus:ring-2 ring-indigo-500/20"
+                placeholder="Cari menu favorit..."
+                className="pl-12 h-12 bg-white dark:bg-slate-900 border-none shadow-sm rounded-2xl text-sm"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {menuItems
                 .filter(item => item.name.toLowerCase().includes(searchQuery.toLowerCase()))
                 .map((item) => (
-                  <Card key={item.id} className="group relative overflow-hidden border-none shadow-md hover:shadow-2xl transition-all duration-300 cursor-pointer bg-white dark:bg-slate-900 p-5 rounded-[2.5rem]" onClick={() => addToCart(item)}>
-                    <Button variant="destructive" size="icon" className="absolute top-4 right-4 h-9 w-9 rounded-full opacity-0 group-hover:opacity-100 z-20 shadow-xl" onClick={(e) => handleDeleteMenu(item.id, e)}><Trash2 className="h-4 w-4" /></Button>
-                    <div className="aspect-square rounded-[2rem] overflow-hidden mb-5">
-                      <img src={item.image} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={item.name} />
+                  <Card key={item.id} className="group relative overflow-hidden border-none shadow-sm hover:shadow-md transition-all cursor-pointer bg-card p-3 rounded-3xl" onClick={() => addToCart(item)}>
+                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 z-20" onClick={(e) => handleDeleteMenu(item.id, e)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <div className="aspect-square rounded-2xl overflow-hidden mb-3">
+                      <img src={item.image} className="w-full h-full object-cover group-hover:scale-105 transition-transform" alt={item.name} />
                     </div>
-                    <div className="space-y-2">
-                      <h3 className="font-black text-base text-slate-800 dark:text-slate-100 truncate uppercase tracking-tight">{item.name}</h3>
-                      <p className="text-indigo-600 font-black text-lg">Rp {item.price.toLocaleString()}</p>
+                    <div className="px-1">
+                      <h3 className="font-bold text-xs truncate uppercase tracking-tight">{item.name}</h3>
+                      <p className="text-indigo-600 font-bold text-sm mt-1">Rp {item.price.toLocaleString()}</p>
                     </div>
                   </Card>
                 ))}
@@ -295,51 +289,45 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="lg:col-span-4 relative">
-          <Card className="flex flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden border-none shadow-2xl bg-white dark:bg-slate-900 rounded-[3rem]">
-            <div className="p-5 bg-indigo-600 text-white shrink-0 relative overflow-hidden">
-              <div className="relative z-10 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/10 rounded-xl backdrop-blur-md">
-                    <ReceiptText className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-black uppercase tracking-tight leading-none">Checkout</h2>
-                    <span className="text-[9px] font-bold uppercase tracking-[0.1em] opacity-70">Order ID: #{new Date().getTime().toString().slice(-4)}</span>
-                  </div>
-                </div>
-                <Badge className={`${orderType === 'takeaway' ? 'bg-orange-500' : 'bg-white/20'} border-none font-black text-[9px] px-3 py-1 rounded-full uppercase`}>
-                  {orderType === 'takeaway' ? 'Bungkus' : `Meja ${selectedTableId}`}
-                </Badge>
+        {/* Cart Sidebar */}
+        <div className="lg:col-span-4">
+          <Card className="flex flex-col h-[calc(100vh-120px)] sticky top-24 overflow-hidden border-none shadow-xl bg-card rounded-[2.5rem]">
+            <div className="p-5 bg-indigo-600 text-white flex justify-between items-center shrink-0">
+              <div className="flex items-center gap-2">
+                <ReceiptText className="h-4 w-4" />
+                <h2 className="text-sm font-bold uppercase">Checkout</h2>
               </div>
+              <Badge className={`${orderType === 'takeaway' ? 'bg-orange-500' : 'bg-indigo-500'} border-none text-[9px]`}>
+                {orderType === 'takeaway' ? 'Bungkus' : `Meja ${selectedTableId}`}
+              </Badge>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-white dark:bg-transparent">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {cart.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-center opacity-20 py-20">
-                  <ShoppingCart className="h-10 w-10 mb-2" />
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Keranjang Kosong</p>
+                <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-30 py-10">
+                  <ShoppingCart className="h-8 w-8 mb-2" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest">Keranjang Kosong</p>
                 </div>
               ) : (
                 cart.map(item => (
-                  <div key={item.id} className="space-y-2 pb-4 border-b border-slate-50 dark:border-slate-800 last:border-0 animate-in fade-in slide-in-from-right-2 duration-300">
-                    <div className="flex justify-between items-start gap-3">
-                      <div className="flex-1 min-w-0">
-                        <span className="font-black text-[12px] text-slate-800 dark:text-slate-100 uppercase block truncate">{item.name}</span>
-                        <span className="text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">Rp {(item.price * item.quantity).toLocaleString()}</span>
+                  <div key={item.id} className="p-3 bg-muted/30 rounded-2xl space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="max-w-[150px]">
+                        <p className="font-bold text-[11px] uppercase truncate">{item.name}</p>
+                        <p className="text-indigo-600 font-bold text-[10px]">Rp {(item.price * item.quantity).toLocaleString()}</p>
                       </div>
-                      <div className="flex items-center bg-slate-50 dark:bg-slate-800 rounded-xl p-1 shrink-0 scale-90">
-                        <button onClick={() => decreaseQuantity(item.id)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-500"><Minus className="h-3 w-3" /></button>
-                        <span className="font-black text-[11px] px-2 min-w-[20px] text-center">{item.quantity}</span>
-                        <button onClick={() => addToCart(item)} className="p-1 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-xl transition-colors text-indigo-600"><Plus className="h-3 w-3" /></button>
+                      <div className="flex items-center bg-background rounded-lg p-1 scale-90 shadow-sm">
+                        <button onClick={() => decreaseQuantity(item.id)} className="p-1 text-muted-foreground"><Minus className="h-3 w-3" /></button>
+                        <span className="font-bold text-xs px-2">{item.quantity}</span>
+                        <button onClick={() => addToCart(item)} className="p-1 text-indigo-600"><Plus className="h-3 w-3" /></button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 bg-slate-50/50 dark:bg-slate-800/40 px-3 py-1.5 rounded-xl">
-                      <MessageSquare className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+                    <div className="flex items-center gap-2 bg-background/50 px-2 py-1 rounded-lg">
+                      <MessageSquare className="h-3 w-3 text-muted-foreground" />
                       <input
                         type="text"
-                        placeholder="CATATAN..."
-                        className="bg-transparent border-none text-[9px] w-full focus:outline-none text-slate-600 dark:text-slate-300 font-bold uppercase"
+                        placeholder="Catatan..."
+                        className="bg-transparent border-none text-[9px] w-full focus:outline-none font-medium uppercase"
                         value={item.notes}
                         onChange={(e) => updateNotes(item.id, e.target.value)}
                       />
@@ -349,56 +337,46 @@ export default function OrdersPage() {
               )}
             </div>
 
-            <div className="shrink-0 bg-white dark:bg-slate-900 border-t">
-              <div className="p-3 flex gap-2 bg-slate-50/50 dark:bg-slate-800/30">
-                <button
-                  onClick={() => setOrderType('dine_in')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${orderType === 'dine_in' ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600' : 'text-slate-400'}`}
-                >
-                  <Utensils className="h-3 w-3" /> Makan Sini
+            <div className="p-5 border-t bg-card space-y-4">
+              <div className="flex p-1 bg-muted rounded-xl">
+                <button onClick={() => setOrderType('dine_in')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold transition-all ${orderType === 'dine_in' ? 'bg-background shadow-sm text-indigo-600' : 'text-muted-foreground'}`}>
+                  <Utensils className="h-3 w-3" /> DINE IN
                 </button>
-                <button
-                  onClick={() => setOrderType('takeaway')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${orderType === 'takeaway' ? 'bg-white dark:bg-slate-700 shadow-sm text-orange-500' : 'text-slate-400'}`}
-                >
-                  <ShoppingBag className="h-3 w-3" /> Bungkus
+                <button onClick={() => setOrderType('takeaway')} className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-[9px] font-bold transition-all ${orderType === 'takeaway' ? 'bg-background shadow-sm text-orange-500' : 'text-muted-foreground'}`}>
+                  <ShoppingBag className="h-3 w-3" /> TAKEAWAY
                 </button>
               </div>
 
-              <div className={`px-6 py-4 transition-all duration-500 ${orderType === 'takeaway' ? 'h-0 py-0 opacity-0 overflow-hidden' : 'h-auto opacity-100'}`}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Nomor Meja</span>
-                  <span className="text-[9px] font-black text-indigo-500">{selectedTableId} terpilih</span>
-                </div>
-                <div className="grid grid-cols-6 gap-1.5">
+              {orderType === 'dine_in' && (
+                <div className="grid grid-cols-6 gap-1">
                   {tablesList.map((table) => (
                     <button
                       key={table.id}
                       onClick={() => setSelectedTableId(table.id)}
-                      className={`h-8 rounded-lg text-[10px] font-black transition-all active:scale-90 border-2
-                        ${selectedTableId === table.id && orderType === 'dine_in' ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200" :
-                          occupiedTables.includes(table.number) ? "bg-rose-500 border-rose-500 text-white" :
-                            "bg-white dark:bg-slate-800 border-transparent text-slate-600 dark:text-slate-400"}`}
+                      disabled={occupiedTables.includes(table.number)}
+                      className={`h-7 rounded-md text-[10px] font-bold border-2 transition-all
+                        ${selectedTableId === table.id ? "bg-indigo-600 border-indigo-600 text-white" :
+                          occupiedTables.includes(table.number) ? "bg-rose-100 border-rose-100 text-rose-400 cursor-not-allowed" :
+                            "bg-background border-transparent"}`}
                     >
                       {table.number}
                     </button>
                   ))}
                 </div>
+              )}
+
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase">Total Amount</span>
+                <span className="text-xl font-black text-indigo-600">Rp {total.toLocaleString()}</span>
               </div>
 
-              <div className="px-7 pb-7 space-y-4">
-                <div className="flex justify-between items-center border-t pt-5">
-                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Bayar</span>
-                  <span className="text-xl font-black text-indigo-600 tracking-tighter">Rp {total.toLocaleString()}</span>
-                </div>
-                <Button
-                  className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-[0.1em] text-[10px] transition-all shadow-xl border-none disabled:bg-slate-200 dark:disabled:bg-slate-800"
-                  disabled={cart.length === 0 || isSending}
-                  onClick={handleSendToKitchen}
-                >
-                  {isSending ? <Loader2 className="animate-spin h-4 w-4" /> : "Kirim Ke Dapur"}
-                </Button>
-              </div>
+              <Button
+                className="w-full h-12 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold uppercase tracking-widest text-[10px] shadow-lg"
+                disabled={cart.length === 0 || isSending}
+                onClick={handleSendToKitchen}
+              >
+                {isSending ? <Loader2 className="animate-spin" /> : "Kirim Ke Dapur"}
+              </Button>
             </div>
           </Card>
         </div>
