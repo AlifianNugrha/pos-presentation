@@ -9,8 +9,8 @@ import { ModeToggle } from "@/components/mode-toggle"
 import {
   TrendingUp, DollarSign, ShoppingBag,
   Settings, RefreshCw, UtensilsCrossed,
-  ClipboardList, Calendar, ChevronRight,
-  ArrowUpRight, Zap
+  ClipboardList, ChevronRight,
+  ArrowUpRight, Zap, Target
 } from "lucide-react"
 
 export default function DashboardPage() {
@@ -90,118 +90,110 @@ export default function DashboardPage() {
   if (!mounted) return null
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 font-[family-name:var(--font-poppins)]">
-      <header className="border-b bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl sticky top-0 z-40">
-        <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="space-y-0.5">
-            <h1 className="text-xl font-black tracking-tight text-slate-900 dark:text-white uppercase">Panel Utama</h1>
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
-              </span>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">{stats.restaurantName} • Sistem Live</p>
+    <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-[#00BA4A]/30 font-sans">
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-[#00BA4A]/5 rounded-full blur-3xl" />
+        <div className="absolute top-[20%] -right-[10%] w-[30%] h-[50%] bg-[#FF5700]/5 rounded-full blur-3xl" />
+      </div>
+
+      <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40">
+        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-[#1A1C1E] p-2.5 rounded-xl shadow-xl shadow-slate-200 dark:shadow-none">
+              <UtensilsCrossed className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-serif font-bold tracking-tight text-slate-900 dark:text-white uppercase">Kasir<span className="text-[#00BA4A]">in</span></h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{stats.restaurantName} • Live</p>
             </div>
           </div>
+
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={fetchStats} disabled={isSyncing} className="hidden md:flex rounded-xl h-10 bg-white dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700">
-              <RefreshCw className={`h-4 w-4 mr-2 text-indigo-500 ${isSyncing ? "animate-spin" : ""}`} />
-              <span className="text-xs font-bold">Sinkron</span>
+            <Button variant="ghost" size="sm" onClick={fetchStats} disabled={isSyncing} className="rounded-full hover:bg-slate-100">
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : "text-[#00BA4A]"}`} />
             </Button>
             <ModeToggle />
             <Link href="/settings">
-              <Button size="sm" className="bg-slate-900 dark:bg-white dark:text-slate-900 hover:scale-105 transition-transform text-white rounded-xl h-10 font-bold text-xs px-4 border-none">
-                <Settings className="h-4 w-4 mr-2" /> Pengaturan
+              <Button size="sm" className="bg-[#1A1C1E] hover:bg-black text-white rounded-full px-6 transition-all hover:shadow-[0_10px_20px_-5px_rgba(26,28,30,0.4)] dark:shadow-none">
+                <Settings className="h-4 w-4 mr-2 text-[#00BA4A]" /> Pengaturan
               </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 sm:px-6 py-8 space-y-8">
-        {/* GRID METRIK */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="relative p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden group">
-            <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-              <DollarSign className="h-16 w-16" />
+      <main className="container mx-auto px-6 py-10 relative z-10 space-y-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="p-8 border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] relative overflow-hidden group transition-all">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#00BA4A]/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
+            <div className="relative">
+              <div className="inline-flex items-center gap-2 bg-[#00BA4A]/10 px-3 py-1 rounded-full mb-4">
+                <span className="w-2 h-2 rounded-full bg-[#00BA4A] animate-pulse" />
+                <p className="text-[10px] font-bold text-[#00BA4A] uppercase tracking-widest">Pendapatan Hari Ini</p>
+              </div>
+              <h2 className="text-4xl font-serif font-bold text-slate-900 dark:text-white tracking-tight">
+                Rp {stats.revenue.toLocaleString("id-ID")}
+              </h2>
             </div>
-            <div className="relative z-10">
-              <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">Pendapatan Hari Ini</p>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Rp {stats.revenue.toLocaleString("id-ID")}</h2>
-              <div className="mt-4 flex items-center text-indigo-600 text-[10px] font-black bg-indigo-50 dark:bg-indigo-900/30 w-fit px-3 py-1 rounded-lg">
-                < Zap className="h-3 w-3 mr-1 fill-indigo-600" /> UPDATE LANGSUNG
+          </Card>
+
+          <Card className="p-8 border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] relative overflow-hidden group transition-all">
+            <div className="relative">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Total Pesanan</p>
+              <h2 className="text-4xl font-serif font-bold text-slate-900 dark:text-white uppercase leading-none">
+                {stats.transactions} <span className="text-lg font-sans font-medium text-slate-400">Struk</span>
+              </h2>
+              <div className="mt-4 flex items-center text-[#FF5700] text-[10px] font-bold bg-[#FF5700]/10 w-fit px-3 py-1 rounded-full">
+                <ArrowUpRight className="h-3 w-3 mr-1" /> AKTIVITAS TINGGI
               </div>
             </div>
           </Card>
 
-          <Card className="relative p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden group border-b-4 border-emerald-500">
-            <div className="absolute -bottom-2 -right-2 p-4 opacity-5">
-              <ShoppingBag className="h-20 w-20" />
-            </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Total Pesanan</p>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white uppercase">{stats.transactions} <span className="text-xs font-bold text-slate-400 ml-1">Struk</span></h2>
-            <div className="mt-4 flex items-center text-emerald-600 text-[10px] font-bold bg-emerald-50 dark:bg-emerald-900/30 w-fit px-3 py-1 rounded-lg">
-              <ArrowUpRight className="h-3 w-3 mr-1" /> BERHASIL
-            </div>
-          </Card>
-
-          <Card className="relative p-6 border-none shadow-xl bg-white dark:bg-slate-900 rounded-[2rem] overflow-hidden">
-            <div className="absolute top-0 left-0 w-1 h-full bg-amber-500" />
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 text-amber-600">Rata-rata Meja</p>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Rp {Math.round(stats.avgBill).toLocaleString("id-ID")}</h2>
-            <p className="mt-4 text-[10px] text-slate-400 font-bold uppercase tracking-tighter">Rata-rata Transaksi</p>
-          </Card>
-
-          <Card className="relative p-6 border-none shadow-xl bg-gradient-to-br from-indigo-600 to-indigo-800 text-white rounded-[2rem] overflow-hidden">
-            <div className="absolute -right-4 -top-4 opacity-20 rotate-12">
-              <RefreshCw className="h-24 w-24" />
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest mb-2 opacity-80">Sinkron Terakhir</p>
-            <h2 className="text-3xl font-black tracking-tighter">{stats.lastSync}</h2>
-            <div className="mt-4 flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-[9px] font-bold uppercase tracking-widest opacity-80">Sistem Terhubung</span>
+          <Card className="p-8 border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem]">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4">Rata-rata Transaksi</p>
+            <h2 className="text-3xl font-serif font-bold text-slate-800 dark:text-slate-200 leading-tight">
+              Rp {Math.round(stats.avgBill).toLocaleString("id-ID")}
+            </h2>
+            <div className="mt-4 flex items-center gap-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest">
+              <Target className="h-3 w-3 text-[#00BA4A]" /> Sinkron: {stats.lastSync}
             </div>
           </Card>
         </div>
 
-        {/* SEKSI ANALITIK */}
-        <Card className="relative p-8 border-none shadow-2xl bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden">
-          <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none"
-            style={{ backgroundImage: `radial-gradient(#4f46e5 1px, transparent 1px)`, backgroundSize: '24px 24px' }} />
+        <Card className="relative p-10 border-none shadow-2xl bg-[#1A1C1E] dark:bg-slate-900 rounded-[3rem] overflow-hidden">
+          <div className="absolute inset-0 opacity-[0.07] pointer-events-none"
+            style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '32px 32px' }} />
 
           <div className="relative z-10">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-12 gap-4">
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-indigo-500" />
-                  <h3 className="font-black text-2xl text-slate-900 dark:text-white tracking-tight uppercase">Analitik Penjualan</h3>
-                </div>
-                <p className="text-sm text-slate-500 font-medium">Pelacakan performa pendapatan per jam</p>
+                <h3 className="font-serif font-bold text-2xl text-white tracking-tight uppercase">
+                  Analitik <span className="text-[#00BA4A]">Performa</span>
+                </h3>
+                <p className="text-sm text-slate-400 font-medium">Data transaksi real-time berdasarkan waktu operasional</p>
               </div>
-              <div className="bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700">
-                <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Data Real-time</span>
+              <div className="bg-white/10 backdrop-blur-sm px-5 py-2.5 rounded-full border border-white/10">
+                <span className="text-[10px] font-bold text-[#00BA4A] uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#00BA4A] animate-ping" /> Sistem Terkoneksi
+                </span>
               </div>
             </div>
 
-            <div className="flex items-end justify-between h-72 gap-4 sm:gap-8 px-2">
+            <div className="flex items-end justify-between h-64 gap-3 sm:gap-6 px-2">
               {hourlyData.map((data, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-5 group h-full justify-end">
-                  <div className="relative w-full flex flex-col justify-end h-full">
-                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 dark:bg-indigo-600 text-white text-[10px] px-3 py-1.5 rounded-xl opacity-0 group-hover:opacity-100 transition-all transform group-hover:-translate-y-2 whitespace-nowrap z-10 font-black shadow-xl">
+                <div key={i} className="flex-1 flex flex-col items-center gap-4 group h-full justify-end">
+                  <div className="relative w-full flex flex-col justify-end h-full max-w-[60px]">
+                    <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-[#00BA4A] text-white text-[10px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all z-10 font-bold whitespace-nowrap shadow-lg">
                       Rp {data.total.toLocaleString("id-ID")}
                     </div>
-
-                    <div className="w-full bg-slate-100 dark:bg-slate-800/40 rounded-2xl overflow-hidden relative h-full">
+                    <div className="w-full bg-white/5 rounded-t-2xl overflow-hidden relative h-full transition-all group-hover:bg-white/10">
                       <div
-                        className="absolute bottom-0 w-full bg-indigo-600 transition-all duration-1000 ease-out rounded-t-xl"
+                        className="absolute bottom-0 w-full bg-[#00BA4A] transition-all duration-1000 ease-in-out group-hover:brightness-125"
                         style={{ height: `${data.percentage}%` }}
-                      >
-                        <div className="w-full h-full opacity-10 bg-[linear-gradient(45deg,rgba(255,255,255,0.2)_25%,transparent_25%,transparent_50%,rgba(255,255,255,0.2)_50%,rgba(255,255,255,0.2)_75%,transparent_75%,transparent)] bg-[length:10px_10px]" />
-                      </div>
+                      />
                     </div>
                   </div>
-                  <p className="text-[10px] text-center font-black text-slate-400 dark:text-slate-500 uppercase tracking-tighter">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
                     {data.hour}
                   </p>
                 </div>
@@ -210,42 +202,38 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* AKSI CEPAT */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Link href="/orders">
-            <div className="group bg-white dark:bg-slate-900 p-2 rounded-[2.5rem] shadow-xl hover:shadow-2xl transition-all border border-slate-100 dark:border-slate-800">
-              <div className="p-8 flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                  <div className="h-20 w-20 bg-indigo-600 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-indigo-200 dark:shadow-none transition-transform">
-                    <UtensilsCrossed className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 dark:text-white text-xl uppercase">Point of Sale</h3>
-                    <p className="text-sm text-slate-500 font-medium">Buat pesanan & tagihan baru</p>
-                  </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-10">
+          <Link href="/orders" className="block group">
+            <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm hover:shadow-[0_10px_40px_-10px_rgba(0,186,74,0.4)] hover:-translate-y-1 transition-all border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-8">
+                <div className="h-16 w-16 bg-[#00BA4A] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-green-100 dark:shadow-none transition-transform group-hover:scale-105">
+                  <UtensilsCrossed className="h-7 w-7" />
                 </div>
-                <div className="h-12 w-12 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-all">
-                  <ChevronRight className="h-6 w-6" />
+                <div>
+                  <h3 className="font-serif font-bold text-slate-900 dark:text-white text-xl uppercase tracking-tight">Mulai Pesanan</h3>
+                  <p className="text-sm text-slate-400 mt-1 text-Kasirin-body">Buka panel kasir / POS harian</p>
                 </div>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-slate-50 dark:bg-slate-800 flex items-center justify-center group-hover:bg-[#FF5700] group-hover:text-white transition-all shadow-inner">
+                <ChevronRight className="h-6 w-6" />
               </div>
             </div>
           </Link>
 
-          <Link href="/kitchen">
-            <div className="group bg-white dark:bg-slate-900 p-2 rounded-[2.5rem] shadow-xl hover:shadow-2xl transition-all border border-slate-100 dark:border-slate-800">
-              <div className="p-8 flex items-center justify-between">
-                <div className="flex items-center gap-8">
-                  <div className="h-20 w-20 bg-rose-500 rounded-[1.5rem] flex items-center justify-center text-white shadow-2xl shadow-rose-200 dark:shadow-none transition-transform">
-                    <ClipboardList className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-slate-900 dark:text-white text-xl uppercase">Dapur</h3>
-                    <p className="text-sm text-slate-500 font-medium">Monitor dapur waktu-nyata</p>
-                  </div>
+          <Link href="/kitchen" className="block group">
+            <div className="bg-[#1A1C1E] p-8 rounded-[2.5rem] shadow-xl hover:shadow-[0_10px_40px_-10px_rgba(255,87,0,0.3)] hover:-translate-y-1 transition-all border-none flex items-center justify-between text-white relative overflow-hidden">
+              <div className="absolute right-0 top-0 w-32 h-32 bg-white/5 rounded-full -mr-10 -mt-10" />
+              <div className="flex items-center gap-8 relative z-10">
+                <div className="h-16 w-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-[#00BA4A] border border-white/10 transition-transform group-hover:scale-105">
+                  <ClipboardList className="h-7 w-7" />
                 </div>
-                <div className="h-12 w-12 rounded-full border border-slate-100 dark:border-slate-800 flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-slate-900 transition-all">
-                  <ChevronRight className="h-6 w-6" />
+                <div>
+                  <h3 className="font-serif font-bold text-white text-xl uppercase tracking-tight">Monitor Dapur</h3>
+                  <p className="text-sm text-slate-400 mt-1">Lihat antrean pesanan masuk</p>
                 </div>
+              </div>
+              <div className="h-12 w-12 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center group-hover:bg-[#FF5700] group-hover:text-white transition-all border border-white/5 relative z-10">
+                <ChevronRight className="h-6 w-6" />
               </div>
             </div>
           </Link>

@@ -14,7 +14,8 @@ import {
   CircleDollarSign,
   Zap,
   BarChart3,
-  Clock
+  Clock,
+  Leaf
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -61,16 +62,16 @@ export function Sidebar() {
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 lg:hidden bg-card border border-border shadow-sm"
+        className="fixed top-4 left-4 z-50 lg:hidden bg-white dark:bg-slate-900 border border-slate-200 shadow-sm rounded-xl"
         onClick={() => setIsOpen(!isOpen)}
       >
-        {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        {isOpen ? <X className="h-5 w-5 text-[#00BA4A]" /> : <Menu className="h-5 w-5 text-[#00BA4A]" />}
       </Button>
 
       {/* Overlay for mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -78,29 +79,32 @@ export function Sidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border z-40 transition-transform duration-300",
+          "fixed left-0 top-0 h-screen w-64 bg-white dark:bg-slate-950 border-r border-slate-100 dark:border-slate-900 z-40 transition-transform duration-300 shadow-2xl lg:shadow-none",
           isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
         )}
       >
-        <div className="flex flex-col h-full font-[family-name:var(--font-poppins)]">
+        <div className="flex flex-col h-full font-sans">
 
-          {/* LOGO SECTION - NAMA DIUBAH MENJADI KASIRIN */}
-          <div className="p-4 pt-6">
-            <div className="bg-blue-600 dark:bg-blue-700 rounded-2xl p-5 border border-blue-500 shadow-lg shadow-blue-500/20">
-              <h1 className="text-2xl font-black text-white tracking-tight leading-none">
-                Kasirin
+          {/* LOGO SECTION - KOTAK HITAM PEKAT, TEKS PUTIH */}
+          <div className="p-6 pt-8">
+            <div className="bg-[#1A1C1E] rounded-[1.8rem] p-6 border border-white/5 shadow-2xl relative overflow-hidden group">
+              <div className="absolute -right-3 -top-3 opacity-20 group-hover:scale-110 transition-transform duration-500">
+                <Leaf className="h-14 w-14 text-[#00BA4A]" />
+              </div>
+              <h1 className="text-2xl font-serif font-bold text-white tracking-tight leading-none relative z-10">
+                Kasir<span className="text-[#00BA4A]">in</span>
               </h1>
-              <p className="text-[10px] font-bold text-blue-100 mt-2 uppercase tracking-[0.2em] leading-none">
-                Kasir Harian
+              <p className="text-[9px] font-black text-white/60 mt-3 uppercase tracking-[0.3em] leading-none relative z-10">
+                Sistem Kasir Harian
               </p>
             </div>
           </div>
 
           {/* Navigation with Groups */}
-          <nav className="flex-1 p-4 space-y-8 overflow-y-auto custom-scrollbar pt-2">
+          <nav className="flex-1 p-6 space-y-10 overflow-y-auto custom-scrollbar pt-4 text-slate-900 dark:text-slate-100">
             {menuGroups.map((group, idx) => (
-              <div key={idx} className="space-y-2">
-                <p className="px-4 text-[10px] font-bold text-sidebar-foreground/30 uppercase tracking-[0.2em]">
+              <div key={idx} className="space-y-3">
+                <p className="px-4 text-[9px] font-black text-slate-300 dark:text-slate-600 uppercase tracking-[0.3em]">
                   {group.label}
                 </p>
 
@@ -114,17 +118,25 @@ export function Sidebar() {
                         href={item.href}
                         onClick={() => setIsOpen(false)}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                          "flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-300 group relative",
                           isActive
-                            ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/20"
-                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                            ? "bg-[#00BA4A]/10 text-[#00BA4A]"
+                            : "text-slate-600 dark:text-slate-400 hover:text-[#00BA4A] hover:bg-slate-50 dark:hover:bg-slate-900",
                         )}
                       >
+                        {isActive && (
+                          <div className="absolute left-0 w-1 h-6 bg-[#00BA4A] rounded-r-full" />
+                        )}
                         <Icon className={cn(
-                          "h-5 w-5 flex-shrink-0 transition-transform group-hover:scale-110",
-                          isActive ? "text-sidebar-primary-foreground" : "text-sidebar-foreground/40"
+                          "h-5 w-5 flex-shrink-0 transition-transform duration-300",
+                          isActive ? "text-[#00BA4A]" : "text-slate-400 dark:text-slate-600 group-hover:text-[#00BA4A]"
                         )} />
-                        <span className="font-bold text-sm tracking-tight">{item.label}</span>
+                        <span className={cn(
+                          "text-[13px] tracking-tight transition-colors",
+                          isActive ? "font-serif text-lg font-bold italic text-[#00BA4A]" : "font-bold text-slate-700 dark:text-slate-300"
+                        )}>
+                          {item.label}
+                        </span>
                       </Link>
                     )
                   })}
@@ -133,15 +145,17 @@ export function Sidebar() {
             ))}
           </nav>
 
-          {/* Footer Card */}
+          {/* Footer Card - Shift Status (KOTAK HITAM PEKAT) */}
           <Link href="/shift" onClick={() => setIsOpen(false)}>
-            <div className="p-4 border-t border-sidebar-border hover:bg-sidebar-accent/30 transition-colors cursor-pointer group">
-              <div className="bg-sidebar-accent/50 rounded-2xl p-4 border border-sidebar-border/50 group-hover:border-blue-500/30 transition-all">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <p className="text-[10px] font-black text-sidebar-accent-foreground uppercase tracking-[0.2em]">Shift Aktif</p>
+            <div className="p-6 border-t border-slate-50 dark:border-slate-900 hover:bg-[#F8FAF9] dark:hover:bg-slate-900 transition-all cursor-pointer group">
+              <div className="bg-[#1A1C1E] rounded-[1.5rem] p-5 border border-white/5 group-hover:border-[#00BA4A]/50 transition-all shadow-xl">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="h-2 w-2 rounded-full bg-[#00BA4A] animate-pulse" />
+                  <p className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em]">Shift Terdeteksi</p>
                 </div>
-                <p className="text-xs font-black text-sidebar-foreground/80 text-center uppercase">Siang (08:00 - 16:00)</p>
+                <p className="text-[11px] font-serif font-bold text-white text-center uppercase tracking-wider">
+                  Siang <span className="text-[#00BA4A] mx-1">•</span> 08:00 - 16:00
+                </p>
               </div>
             </div>
           </Link>
@@ -149,4 +163,7 @@ export function Sidebar() {
       </aside>
     </>
   )
-} 
+}
+
+// Menambahkan default export untuk mencegah error 'Element type is invalid'
+export default Sidebar;

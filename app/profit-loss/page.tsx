@@ -10,12 +10,11 @@ import {
     TrendingUp,
     TrendingDown,
     Calendar,
-    Download,
-    ArrowRight,
-    PieChart as PieIcon,
     RefreshCw,
     Wallet,
-    FileSpreadsheet
+    FileSpreadsheet,
+    PieChart as PieIcon,
+    ArrowUpRight
 } from "lucide-react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
@@ -68,7 +67,6 @@ export default function ProfitLossPage() {
         }
     }
 
-    // Fungsi Export ke CSV
     const exportToCSV = () => {
         const headers = ["Kategori", "Nilai (IDR)"];
         const rows = [
@@ -92,154 +90,167 @@ export default function ProfitLossPage() {
     }
 
     return (
-        <div className="min-h-screen bg-background font-[family-name:var(--font-poppins)] pb-12">
-            {/* Header - Tombol Export Dihapus dari Sini */}
-            <header className="border-b border-border bg-card/50 backdrop-blur-md sticky top-0 z-40">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-[#00BA4A]/20 pb-12">
+            {/* Header Style Natadesa */}
+            <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6">
+                <div className="container mx-auto py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/dashboard">
-                            <Button variant="ghost" size="icon" className="rounded-xl border border-border h-10 w-10">
-                                <ArrowLeft className="h-5 w-5" />
+                            <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100 transition-colors">
+                                <ArrowLeft className="h-5 w-5 text-[#00BA4A]" />
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-xl font-bold text-foreground leading-none">Laba Rugi</h1>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Financial Summary</p>
+                            <h1 className="text-xl font-serif font-bold uppercase tracking-tight text-slate-900 dark:text-white leading-none">Laba <span className="text-[#00BA4A]">Rugi</span></h1>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Laporan Finansial Konsolidasian</p>
                         </div>
                     </div>
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={fetchFinancialData}
-                        className="rounded-xl h-10 w-10 text-muted-foreground border border-border"
+                        className="rounded-full h-10 w-10 text-[#00BA4A] hover:bg-green-50 border border-slate-100 dark:border-slate-800 transition-all"
                     >
                         <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
                     </Button>
                 </div>
             </header>
 
-            <main className="container mx-auto px-6 py-8 max-w-5xl space-y-6">
+            <main className="container mx-auto px-6 py-10 max-w-5xl space-y-8 relative z-10 font-sans">
 
-                {/* Main Profit Card */}
-                <Card className="p-8 border border-border bg-card rounded-3xl relative overflow-hidden shadow-sm">
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="space-y-1">
-                            <div className="flex items-center gap-2 mb-2">
-                                <div className="h-2 w-2 rounded-full bg-indigo-500 animate-pulse" />
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">Estimasi Laba Bersih</p>
+                {/* Main Profit Card - Dark Style Natadesa */}
+                <Card className="p-10 border-none bg-[#1A1C1E] rounded-[2.5rem] relative overflow-hidden shadow-2xl group transition-all duration-500 hover:shadow-[#00BA4A]/10">
+                    {/* Pattern Overlay */}
+                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+                        style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '32px 32px' }} />
+
+                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="h-2 w-2 rounded-full bg-[#00BA4A] animate-pulse" />
+                                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">Net Profit Margin</p>
                             </div>
-                            <h2 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
+                            <h2 className="text-4xl md:text-6xl font-serif font-bold tracking-tight text-white italic">
                                 Rp {data.netProfit.toLocaleString("id-ID")}
                             </h2>
-                            <div className="flex items-center gap-3 pt-4">
-                                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-600 border-none rounded-lg px-3 py-1 text-[10px] font-bold uppercase tracking-wider">
+                            <div className="flex items-center gap-4 pt-4">
+                                <Badge className="bg-[#00BA4A] text-white border-none rounded-full px-6 py-2 text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-900/40">
                                     Margin {data.margin.toFixed(1)}%
                                 </Badge>
                                 {data.netProfit >= 0 ? (
-                                    <span className="text-[10px] font-bold text-emerald-500 flex items-center gap-1 uppercase tracking-widest">
-                                        <TrendingUp className="h-3.5 w-3.5" /> Performa Bagus
+                                    <span className="text-[10px] font-bold text-[#00BA4A] flex items-center gap-2 uppercase tracking-widest">
+                                        <ArrowUpRight className="h-4 w-4" /> Performa Positif
                                     </span>
                                 ) : (
-                                    <span className="text-[10px] font-bold text-rose-500 flex items-center gap-1 uppercase tracking-widest">
-                                        <TrendingDown className="h-3.5 w-3.5" /> Defisit Keuangan
+                                    <span className="text-[10px] font-bold text-[#FF5700] flex items-center gap-2 uppercase tracking-widest">
+                                        <TrendingDown className="h-4 w-4" /> Defisit Anggaran
                                     </span>
                                 )}
                             </div>
                         </div>
-                        <div className="h-20 w-20 rounded-2xl bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center border border-indigo-100 dark:border-indigo-900">
-                            <PieIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+                        <div className="h-24 w-24 rounded-[2.2rem] bg-white/5 backdrop-blur-md flex items-center justify-center border border-white/10 group-hover:rotate-12 transition-all duration-500">
+                            <PieIcon className="h-10 w-10 text-[#00BA4A]" />
                         </div>
                     </div>
                 </Card>
 
                 {/* Breakdown Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Income */}
-                    <Card className="p-6 border border-border bg-card rounded-2xl shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600">
-                                    <TrendingUp className="h-5 w-5" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Income Card */}
+                    <Card className="p-8 border-none bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl bg-[#00BA4A]/10 flex items-center justify-center text-[#00BA4A]">
+                                    <TrendingUp className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Pendapatan</p>
-                                    <h3 className="text-lg font-bold text-foreground">Rp {data.income.toLocaleString("id-ID")}</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pendapatan</p>
+                                    <h3 className="text-2xl font-serif font-bold text-slate-800 dark:text-white italic">Rp {data.income.toLocaleString("id-ID")}</h3>
                                 </div>
                             </div>
                         </div>
-                        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500" style={{ width: '100%' }} />
+                        <div className="h-2 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-[#00BA4A] rounded-full" style={{ width: '100%' }} />
                         </div>
                     </Card>
 
-                    {/* Expense */}
-                    <Card className="p-6 border border-border bg-card rounded-2xl shadow-sm">
-                        <div className="flex items-center justify-between mb-6">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 rounded-xl bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center text-rose-600">
-                                    <TrendingDown className="h-5 w-5" />
+                    {/* Expense Card */}
+                    <Card className="p-8 border-none bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-2xl bg-[#FF5700]/10 flex items-center justify-center text-[#FF5700]">
+                                    <TrendingDown className="h-6 w-6" />
                                 </div>
                                 <div>
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total Pengeluaran</p>
-                                    <h3 className="text-lg font-bold text-foreground">Rp {data.expenses.toLocaleString("id-ID")}</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pengeluaran</p>
+                                    <h3 className="text-2xl font-serif font-bold text-slate-800 dark:text-white italic">Rp {data.expenses.toLocaleString("id-ID")}</h3>
                                 </div>
                             </div>
-                            <span className="text-[10px] font-bold text-muted-foreground">{data.income > 0 ? ((data.expenses / data.income) * 100).toFixed(0) : 0}% Rasio</span>
+                            <Badge variant="outline" className="text-[9px] font-black border-slate-100 text-slate-400 rounded-full px-4 py-1 uppercase">
+                                {data.income > 0 ? ((data.expenses / data.income) * 100).toFixed(0) : 0}% Rasio
+                            </Badge>
                         </div>
-                        <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+                        <div className="h-2 w-full bg-slate-50 dark:bg-slate-800 rounded-full overflow-hidden">
                             <div
-                                className="h-full bg-rose-500"
+                                className="h-full bg-[#FF5700] rounded-full transition-all duration-1000"
                                 style={{ width: `${Math.min((data.expenses / (data.income || 1)) * 100, 100)}%` }}
                             />
                         </div>
                     </Card>
                 </div>
 
-                {/* Detail Ledger */}
-                <Card className="border border-border bg-card rounded-3xl overflow-hidden shadow-sm">
-                    <div className="p-6 border-b border-border flex items-center justify-between bg-muted/20">
-                        <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <h3 className="font-bold text-xs uppercase tracking-[0.2em] text-foreground">Rincian Arus Kas</h3>
+                {/* Ledger Table Section */}
+                <Card className="border-none bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-sm">
+                    <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2.5 bg-[#1A1C1E] rounded-2xl shadow-lg"><Calendar className="h-5 w-5 text-[#00BA4A]" /></div>
+                            <h3 className="font-serif font-bold text-xl text-slate-800 dark:text-white uppercase tracking-tight">Log <span className="text-[#00BA4A]">Finansial</span></h3>
                         </div>
+                        <Badge className="bg-slate-50 dark:bg-slate-800 text-slate-400 border-none rounded-full px-5 py-2 text-[10px] font-bold uppercase tracking-widest">Sinkronisasi Real-time</Badge>
                     </div>
 
-                    <div className="divide-y divide-border">
-                        <div className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-bold text-xs">IN</div>
+                    <div className="divide-y divide-slate-50 dark:divide-slate-800">
+                        {/* INFLOW */}
+                        <div className="flex items-center justify-between p-10 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all group cursor-default">
+                            <div className="flex items-center gap-8">
+                                <div className="h-14 w-14 rounded-[1.5rem] bg-[#00BA4A]/5 text-[#00BA4A] flex items-center justify-center font-serif font-bold text-sm border border-[#00BA4A]/10 group-hover:bg-[#00BA4A] group-hover:text-white transition-all duration-300 shadow-sm">IN</div>
                                 <div>
-                                    <p className="font-bold text-sm text-foreground">Revenue Otomatis</p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Sinkronisasi Tabel Revenue</p>
+                                    <p className="font-serif font-bold text-lg text-slate-800 dark:text-white leading-none">Revenue Penjualan</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Total Pendapatan Terverifikasi</p>
                                 </div>
                             </div>
-                            <p className="text-sm font-bold text-emerald-600">+ Rp {data.income.toLocaleString("id-ID")}</p>
+                            <p className="text-xl font-serif font-bold text-[#00BA4A] group-hover:translate-x-[-10px] transition-transform">+ Rp {data.income.toLocaleString("id-ID")}</p>
                         </div>
 
-                        <div className="flex items-center justify-between p-6 hover:bg-muted/30 transition-colors group">
-                            <div className="flex items-center gap-4">
-                                <div className="h-10 w-10 rounded-xl bg-rose-500/10 text-rose-600 flex items-center justify-center font-bold text-xs">OUT</div>
+                        {/* OUTFLOW */}
+                        <div className="flex items-center justify-between p-10 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all group cursor-default">
+                            <div className="flex items-center gap-8">
+                                <div className="h-14 w-14 rounded-[1.5rem] bg-[#FF5700]/5 text-[#FF5700] flex items-center justify-center font-serif font-bold text-sm border border-[#FF5700]/10 group-hover:bg-[#FF5700] group-hover:text-white transition-all duration-300 shadow-sm">OUT</div>
                                 <div>
-                                    <p className="font-bold text-sm text-foreground">Beban Pengeluaran</p>
-                                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">Sinkronisasi Tabel Expenses</p>
+                                    <p className="font-serif font-bold text-lg text-slate-800 dark:text-white leading-none">Beban Operasional</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-[0.2em] mt-3">Pengeluaran & Belanja Bahan</p>
                                 </div>
                             </div>
-                            <p className="text-sm font-bold text-rose-600">- Rp {data.expenses.toLocaleString("id-ID")}</p>
+                            <p className="text-xl font-serif font-bold text-[#FF5700] group-hover:translate-x-[-10px] transition-transform">- Rp {data.expenses.toLocaleString("id-ID")}</p>
                         </div>
                     </div>
                 </Card>
 
-                {/* AREA EXPORT - Ditempatkan di bawah agar lebih clean */}
-                <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                        <Wallet className="h-4 w-4" />
-                        <p className="text-[10px] font-bold uppercase tracking-widest">Sistem Keuangan Terverifikasi</p>
+                {/* Footer Action - HIJAU MENYALA */}
+                <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-slate-200 dark:border-slate-800">
+                    <div className="flex items-center gap-4 text-slate-400 group cursor-default">
+                        <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 group-hover:border-[#00BA4A] transition-colors"><Wallet className="h-5 w-5 text-[#00BA4A]" /></div>
+                        <div>
+                            <p className="text-[10px] font-bold uppercase tracking-[0.2em]">Sistem Verifikasi Natadesa</p>
+                            <p className="text-[9px] font-medium text-slate-300 dark:text-slate-600 mt-1 uppercase">Laporan ini dibuat secara otomatis oleh sistem</p>
+                        </div>
                     </div>
                     <Button
                         onClick={exportToCSV}
-                        className="w-full sm:w-auto rounded-2xl bg-foreground text-background hover:bg-foreground/90 gap-2 h-12 px-8 font-bold text-xs uppercase tracking-widest transition-all active:scale-95 shadow-lg shadow-foreground/10"
+                        className="w-full sm:w-auto rounded-[1.8rem] bg-[#00BA4A] hover:bg-[#009e3f] text-white gap-4 h-16 px-12 font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_40px_-15px_rgba(0,186,74,0.3)] dark:shadow-none transition-all active:scale-95 flex items-center justify-center"
                     >
-                        <FileSpreadsheet className="h-4 w-4" /> Export Laporan (.CSV)
+                        <FileSpreadsheet className="h-5 w-5 text-white animate-bounce-subtle" />
+                        Export Laporan (.CSV)
                     </Button>
                 </div>
             </main>

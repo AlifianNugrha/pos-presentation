@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { supabase } from "@/lib/supabase" // Pastikan path ini benar sesuai project Anda
+import { supabase } from "@/lib/supabase"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,8 @@ import {
   Store, Printer, Users, Shield,
   Database, HelpCircle, ArrowLeft, Save,
   Loader2, Check, ChevronRight, Globe,
-  RefreshCcw, Trash2, Lock, MessageSquare
+  RefreshCcw, Trash2, Lock, MessageSquare,
+  Sparkles
 } from "lucide-react"
 
 export default function SettingsPage() {
@@ -24,7 +25,6 @@ export default function SettingsPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [mounted, setMounted] = useState(false)
 
-  // --- SETTINGS STATE ---
   const [settings, setSettings] = useState({
     restaurantName: "Warung Makan Berkah",
     phone: "0812345678",
@@ -37,27 +37,21 @@ export default function SettingsPage() {
     cashierPin: "1234"
   })
 
-  // --- STAFF STATE ---
   const [staffs, setStaffs] = useState<any[]>([])
   const [isAddingStaff, setIsAddingStaff] = useState(false)
   const [newStaff, setNewStaff] = useState({ name: "", role: "Cashier" })
 
   useEffect(() => {
     setMounted(true)
-
-    // Load Settings (Tetap localStorage untuk konfigurasi lokal aplikasi)
     const savedData = localStorage.getItem("pos_settings")
     if (savedData) setSettings(JSON.parse(savedData))
-
-    // Load Staffs dari Supabase agar sinkron dengan halaman Shift
     fetchStaffs()
   }, [])
 
-  // Fungsi untuk mengambil data staff dari Supabase
   const fetchStaffs = async () => {
     try {
       const { data, error } = await supabase
-        .from('profiles') // Nama tabel disesuaikan dengan integrasi database Anda
+        .from('profiles')
         .select('*')
         .order('name', { ascending: true })
 
@@ -65,10 +59,10 @@ export default function SettingsPage() {
 
       if (data) {
         const colors = [
-          "bg-indigo-100 text-indigo-600",
-          "bg-emerald-100 text-emerald-600",
-          "bg-orange-100 text-orange-600",
-          "bg-rose-100 text-rose-600"
+          "bg-green-100 text-[#00BA4A]",
+          "bg-orange-100 text-[#FF5700]",
+          "bg-blue-100 text-blue-600",
+          "bg-slate-100 text-slate-600"
         ]
 
         const formattedData = data.map((s: any, i: number) => ({
@@ -85,8 +79,7 @@ export default function SettingsPage() {
 
   const handleSave = async () => {
     setIsSaving(true)
-    // Simulasi delay sinkronisasi
-    await new Promise(resolve => setTimeout(resolve, 1200))
+    await new Promise(resolve => setTimeout(resolve, 1000))
     localStorage.setItem("pos_settings", JSON.stringify(settings))
     window.dispatchEvent(new Event("storage"))
     setIsSaving(false)
@@ -100,19 +93,10 @@ export default function SettingsPage() {
   const handleAddStaff = async () => {
     if (!newStaff.name) return
     setIsSaving(true)
-
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('profiles')
-        .insert([{
-          name: newStaff.name,
-          role: newStaff.role
-        }])
-        .select()
-
-      if (error) throw error
-
-      // Refresh list setelah berhasil tambah
+        .insert([{ name: newStaff.name, role: newStaff.role }])
       await fetchStaffs()
       setNewStaff({ name: "", role: "Cashier" })
       setIsAddingStaff(false)
@@ -126,85 +110,83 @@ export default function SettingsPage() {
   const deleteStaff = async (index: number) => {
     const target = staffs[index]
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('name', target.name) // Filter berdasarkan nama atau ID jika ada
-
-      if (error) throw error
-
-      const updated = staffs.filter((_, i) => i !== index)
-      setStaffs(updated)
+      const { error } = await supabase.from('profiles').delete().eq('name', target.name)
+      if (!error) {
+        const updated = staffs.filter((_, i) => i !== index)
+        setStaffs(updated)
+      }
     } catch (error) {
       console.error("Error deleting staff:", error)
     }
   }
 
   const sections = [
-    { id: "info", title: "Informasi Restoran", description: "Nama, alamat, dan detail kontak", icon: Store, color: "text-indigo-600", bg: "bg-indigo-50 dark:bg-indigo-950/30" },
-    { id: "device", title: "Perangkat & Printer", description: "Konfigurasi cetak struk", icon: Printer, color: "text-blue-600", bg: "bg-blue-50 dark:bg-blue-950/30" },
-    { id: "users", title: "Manajemen User", description: "Kasir, waiter, dan hak akses", icon: Users, color: "text-orange-600", bg: "bg-orange-50 dark:bg-orange-950/30" },
-    { id: "security", title: "Keamanan", description: "Password, PIN, dan kunci layar", icon: Shield, color: "text-rose-600", bg: "bg-rose-50 dark:bg-rose-950/30" },
-    { id: "database", title: "Database & Backup", description: "Manajemen data dan restore", icon: Database, color: "text-emerald-600", bg: "bg-emerald-50 dark:bg-emerald-950/30" },
-    { id: "support", title: "Bantuan", description: "Panduan dan kontak bantuan", icon: HelpCircle, color: "text-slate-600", bg: "bg-slate-100 dark:bg-slate-800" },
+    { id: "info", title: "Info Restoran", description: "Nama, alamat, dan kontak", icon: Store, color: "text-[#00BA4A]", bg: "bg-green-50" },
+    { id: "device", title: "Printer Struk", description: "Konfigurasi cetak struk", icon: Printer, color: "text-blue-600", bg: "bg-blue-50" },
+    { id: "users", title: "Manajemen Staf", description: "Hak akses kasir & waiter", icon: Users, color: "text-[#FF5700]", bg: "bg-orange-50" },
+    { id: "security", title: "Keamanan", description: "PIN kasir & kunci layar", icon: Shield, color: "text-rose-600", bg: "bg-rose-50" },
+    { id: "database", title: "Cloud Sync", description: "Manajemen backup data", icon: Database, color: "text-emerald-600", bg: "bg-emerald-50" },
+    { id: "support", title: "Pusat Bantuan", description: "Panduan & Support 24/7", icon: HelpCircle, color: "text-slate-600", bg: "bg-slate-100" },
   ]
 
   if (!mounted) return null
 
   if (!activeTab) {
     return (
-      <div className="min-h-screen bg-slate-50/50 dark:bg-background font-[family-name:var(--font-poppins)]">
-        <header className="border-b bg-background/80 backdrop-blur-xl sticky top-0 z-40">
-          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+      <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+        <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6">
+          <div className="container mx-auto py-4 flex justify-between items-center">
             <div className="flex items-center gap-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
+                  <ArrowLeft className="h-5 w-5 text-[#00BA4A]" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white leading-none">Settings</h1>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mt-1">System Configuration</p>
+                <h1 className="text-xl font-serif font-bold uppercase tracking-tight leading-none">Pengaturan <span className="text-[#00BA4A]">Sistem</span></h1>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Konfigurasi Natadesa POS</p>
               </div>
             </div>
             <ModeToggle />
           </div>
         </header>
 
-        <main className="container mx-auto px-4 py-8 max-w-5xl">
-          <Card className="p-8 mb-8 border-none shadow-sm bg-indigo-600 text-white rounded-[2rem] overflow-hidden relative group">
-            <div className="relative z-10 flex justify-between items-start">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-white/20 rounded-lg backdrop-blur-md">
-                    <Globe className="h-4 w-4 text-white" />
+        <main className="container mx-auto px-6 py-10 max-w-5xl space-y-10 relative z-10">
+          <Card className="p-10 border-none shadow-sm bg-[#1A1C1E] text-white rounded-[2.5rem] overflow-hidden relative group">
+            <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
+              <div className="space-y-4">
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <div className="p-2 bg-[#00BA4A]/20 rounded-xl backdrop-blur-md border border-[#00BA4A]/20">
+                    <Globe className="h-4 w-4 text-[#00BA4A]" />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-100">Live Production</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#00BA4A]">Terminal Aktif</span>
                 </div>
                 <div>
-                  <h2 className="text-3xl font-bold tracking-tight">{settings.restaurantName}</h2>
-                  <p className="text-indigo-100/80 text-sm font-medium mt-1 max-w-md">{settings.address}</p>
+                  <h2 className="text-3xl font-serif font-bold italic tracking-tight">{settings.restaurantName}</h2>
+                  <p className="text-slate-400 text-sm font-medium mt-2 max-w-md">{settings.address}</p>
                 </div>
               </div>
+              <div className="h-20 w-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:rotate-45 transition-transform duration-700">
+                <Store className="h-8 w-8 text-[#00BA4A]" />
+              </div>
             </div>
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 h-64 w-64 bg-white/10 rounded-full blur-3xl" />
           </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sections.map((s) => (
               <Card
                 key={s.id}
                 onClick={() => setActiveTab(s.id)}
-                className="p-6 cursor-pointer border-none bg-white dark:bg-slate-900 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group rounded-2xl"
+                className="p-8 cursor-pointer border-none bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group rounded-[2rem]"
               >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`h-12 w-12 rounded-2xl ${s.bg} ${s.color} flex items-center justify-center group-hover:scale-110 transition-transform duration-500`}>
-                    <s.icon className="h-6 w-6" />
+                <div className="flex items-center justify-between mb-6">
+                  <div className={`h-14 w-14 rounded-2xl ${s.bg} ${s.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                    <s.icon className="h-7 w-7" />
                   </div>
-                  <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
+                  <ChevronRight className="h-5 w-5 text-slate-200 group-hover:text-[#00BA4A] group-hover:translate-x-1 transition-all" />
                 </div>
-                <h3 className="font-bold text-slate-900 dark:text-white mb-1">{s.title}</h3>
-                <p className="text-xs text-slate-500 leading-relaxed font-medium">{s.description}</p>
+                <h3 className="font-serif font-bold text-lg text-slate-800 dark:text-white mb-2">{s.title}</h3>
+                <p className="text-xs text-slate-400 leading-relaxed font-medium">{s.description}</p>
               </Card>
             ))}
           </div>
@@ -214,70 +196,68 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background font-[family-name:var(--font-poppins)]">
-      <header className="border-b bg-background/80 backdrop-blur-xl sticky top-0 z-40 px-4 py-4">
+    <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 font-sans">
+      <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="container mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="rounded-full">
-            <ArrowLeft className="h-5 w-5 text-slate-600" />
+          <Button variant="ghost" size="icon" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="rounded-full hover:bg-slate-100 transition-colors">
+            <ArrowLeft className="h-5 w-5 text-[#00BA4A]" />
           </Button>
-          <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+          <h1 className="text-xl font-serif font-bold text-slate-800 dark:text-white">
             {sections.find(s => s.id === activeTab)?.title}
           </h1>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-2xl">
-        <Card className="relative overflow-hidden border-none shadow-xl bg-white dark:bg-slate-900 rounded-[2rem]">
+      <main className="container mx-auto px-6 py-10 max-w-3xl relative z-10">
+        <Card className="relative overflow-hidden border-none shadow-2xl bg-white dark:bg-slate-900 rounded-[3rem]">
           {(isSaving || saveSuccess) && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm animate-in fade-in duration-300">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md animate-in fade-in duration-300">
               {isSaving ? (
                 <div className="flex flex-col items-center gap-4">
-                  <div className="p-4 bg-indigo-50 dark:bg-indigo-950/30 rounded-full">
-                    <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
-                  </div>
-                  <p className="text-sm font-bold text-slate-600 animate-pulse">Saving to database...</p>
+                  <Loader2 className="h-10 w-10 animate-spin text-[#00BA4A]" />
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#00BA4A]">Menyimpan Data...</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4 animate-in zoom-in duration-300">
-                  <div className="h-16 w-16 rounded-full bg-emerald-100 dark:bg-emerald-950/30 flex items-center justify-center">
-                    <Check className="h-8 w-8 text-emerald-600" />
+                  <div className="h-20 w-20 rounded-full bg-[#00BA4A]/10 flex items-center justify-center">
+                    <Check className="h-10 w-10 text-[#00BA4A]" />
                   </div>
-                  <p className="text-sm font-bold text-emerald-600">Sync Successful!</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[#00BA4A]">Sinkronisasi Berhasil</p>
                 </div>
               )}
             </div>
           )}
 
-          <div className="p-8 space-y-8">
+          <div className="p-10 space-y-10">
             {/* 1. RESTAURANT INFO */}
             {activeTab === "info" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Restaurant Name</Label>
-                  <Input className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none font-medium" value={settings.restaurantName} onChange={(e) => setSettings({ ...settings, restaurantName: e.target.value })} />
+              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Unit Bisnis</Label>
+                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-serif font-bold px-6 focus-visible:ring-1 focus-visible:ring-[#00BA4A]" value={settings.restaurantName} onChange={(e) => setSettings({ ...settings, restaurantName: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Phone Number</Label>
-                  <Input className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none font-medium" value={settings.phone} onChange={(e) => setSettings({ ...settings, phone: e.target.value })} />
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Kontak Operasional</Label>
+                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold px-6" value={settings.phone} onChange={(e) => setSettings({ ...settings, phone: e.target.value })} />
                 </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Address</Label>
-                  <Textarea className="min-h-[120px] rounded-xl bg-slate-50 dark:bg-slate-800 border-none font-medium py-3" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} />
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Alamat Lengkap</Label>
+                  <Textarea className="min-h-[140px] rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-medium px-6 py-4" value={settings.address} onChange={(e) => setSettings({ ...settings, address: e.target.value })} />
                 </div>
               </div>
             )}
 
             {/* 2. DEVICE & PRINTER */}
             {activeTab === "device" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Printer Name</Label>
-                  <Input className="h-12 rounded-xl bg-slate-50 dark:bg-slate-800 border-none font-medium" value={settings.printerName} onChange={(e) => setSettings({ ...settings, printerName: e.target.value })} />
+              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Identitas Printer</Label>
+                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold px-6" value={settings.printerName} onChange={(e) => setSettings({ ...settings, printerName: e.target.value })} />
                 </div>
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
+                <div className="p-8 rounded-[2rem] bg-[#F8FAF9] dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Auto-Print Receipt</p>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">Print automatically after payment</p>
+                    <p className="text-sm font-serif font-bold text-slate-800 dark:text-white">Auto-Print Receipt</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Cetak struk otomatis setelah bayar</p>
                   </div>
                   <Switch checked={settings.autoPrint} onCheckedChange={(val) => setSettings({ ...settings, autoPrint: val })} />
                 </div>
@@ -286,38 +266,42 @@ export default function SettingsPage() {
 
             {/* 3. USER MANAGEMENT */}
             {activeTab === "users" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
+              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Active Staff</Label>
-                  <Button variant="link" onClick={() => setIsAddingStaff(!isAddingStaff)} className="text-indigo-600 text-xs font-bold h-auto p-0">
-                    {isAddingStaff ? "Cancel" : "+ Add New Staff"}
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Daftar Staf Aktif</Label>
+                  <Button variant="ghost" onClick={() => setIsAddingStaff(!isAddingStaff)} className="text-[#00BA4A] text-[10px] font-black uppercase tracking-widest h-auto p-0 hover:bg-transparent">
+                    {isAddingStaff ? "Batal" : "+ Tambah Staf"}
                   </Button>
                 </div>
 
                 {isAddingStaff && (
-                  <div className="p-4 rounded-2xl bg-indigo-50/30 dark:bg-indigo-950/20 border-2 border-dashed border-indigo-200 space-y-3">
-                    <Input placeholder="Staff Name" className="h-10 rounded-xl border-none bg-white dark:bg-slate-800 font-bold" value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} />
-                    <select className="w-full h-10 rounded-xl bg-white dark:bg-slate-800 border-none px-3 font-bold text-xs outline-none" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
-                      <option value="Cashier">Cashier</option>
-                      <option value="Waiter">Waiter</option>
-                      <option value="Owner">Owner</option>
+                  <div className="p-8 rounded-[2.5rem] bg-green-50/30 dark:bg-green-950/20 border-2 border-dashed border-[#00BA4A]/20 space-y-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="h-4 w-4 text-[#00BA4A]" />
+                      <span className="text-[9px] font-black uppercase tracking-widest text-[#00BA4A]">Pendaftaran Akun</span>
+                    </div>
+                    <Input placeholder="Nama Lengkap Staf" className="h-12 rounded-2xl border-none bg-white dark:bg-slate-800 font-bold px-6 shadow-sm" value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} />
+                    <select className="w-full h-12 rounded-2xl bg-white dark:bg-slate-800 border-none px-6 font-bold text-xs outline-none shadow-sm" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
+                      <option value="Cashier">Kasir / POS</option>
+                      <option value="Waiter">Waiter / Pramusaji</option>
+                      <option value="Owner">Manajer / Owner</option>
                     </select>
-                    <Button onClick={handleAddStaff} className="w-full bg-indigo-600 h-10 rounded-xl font-bold text-[10px] uppercase">Add Member</Button>
+                    <Button onClick={handleAddStaff} className="w-full bg-[#00BA4A] hover:bg-[#009e3f] h-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-green-100">Tambah Anggota</Button>
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {staffs.map((user, i) => (
-                    <div key={i} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800 group transition-all">
-                      <div className="flex items-center gap-3">
-                        <div className={`h-10 w-10 rounded-full ${user.color} flex items-center justify-center font-bold text-xs`}>{user.initial}</div>
+                    <div key={i} className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800 group hover:border-[#00BA4A]/30 transition-all">
+                      <div className="flex items-center gap-5">
+                        <div className={`h-12 w-12 rounded-2xl ${user.color} flex items-center justify-center font-bold text-sm shadow-sm`}>{user.initial}</div>
                         <div>
-                          <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{user.name}</p>
-                          <p className="text-[10px] text-slate-500 font-medium uppercase">{user.role}</p>
+                          <p className="text-base font-serif font-bold text-slate-800 dark:text-white leading-none">{user.name}</p>
+                          <p className="text-[10px] text-[#00BA4A] font-bold uppercase tracking-widest mt-2">{user.role}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => deleteStaff(i)} className="h-8 w-8 text-slate-300 hover:text-rose-600 opacity-0 group-hover:opacity-100">
-                        <Trash2 className="h-4 w-4" />
+                      <Button variant="ghost" size="icon" onClick={() => deleteStaff(i)} className="h-10 w-10 text-slate-200 hover:text-rose-600 transition-colors">
+                        <Trash2 className="h-5 w-5" />
                       </Button>
                     </div>
                   ))}
@@ -327,35 +311,36 @@ export default function SettingsPage() {
 
             {/* 4. SECURITY */}
             {activeTab === "security" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-3">
-                  <Label className="text-xs font-bold uppercase tracking-widest text-slate-400 ml-1">Cashier PIN (4 Digits)</Label>
-                  <div className="flex gap-3">
+              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Akses Kasir (4-Digit PIN)</Label>
+                  <div className="flex gap-4">
                     {[0, 1, 2, 3].map((i) => (
-                      <Input key={i} type="password" maxLength={1} className="h-14 w-full rounded-xl bg-slate-50 dark:bg-slate-800 border-none text-center text-lg font-bold" defaultValue={settings.cashierPin[i]} />
+                      <Input key={i} type="password" maxLength={1} className="h-16 w-full rounded-2xl bg-[#F8FAF9] dark:bg-slate-800 border-none text-center text-2xl font-serif font-bold shadow-inner" defaultValue={settings.cashierPin[i]} />
                     ))}
                   </div>
                 </div>
-                <div className="p-5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-1">
-                    <p className="text-sm font-bold text-slate-800 dark:text-slate-200">Auto-Lock Screen</p>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase tracking-tight">Lock app after 5 mins of inactivity</p>
+                <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
+                  <div className="space-y-1 pr-10">
+                    <p className="text-sm font-serif font-bold text-slate-800 dark:text-white">Auto-Lock System</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kunci layar otomatis setelah 5 menit</p>
                   </div>
                   <Switch checked={settings.autoLock} onCheckedChange={(val) => setSettings({ ...settings, autoLock: val })} />
                 </div>
               </div>
             )}
 
-            {/* 5. DATABASE & BACKUP */}
+            {/* 5. DATABASE */}
             {activeTab === "database" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="p-6 rounded-3xl bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/50">
-                  <div className="flex items-center gap-3 mb-4">
-                    <Database className="h-5 w-5 text-emerald-600" />
-                    <p className="text-sm font-bold text-emerald-900 dark:text-emerald-400">Database Health: Excellent</p>
-                  </div>
-                  <Button className="w-full bg-white dark:bg-slate-900 text-emerald-600 font-bold text-[10px] h-10 rounded-xl shadow-sm border-none">
-                    <RefreshCcw className="h-3 w-3 mr-2" /> SYNC TO CLOUD
+              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300 text-center">
+                <div className="h-24 w-24 bg-[#00BA4A]/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                  <Database className="h-10 w-10 text-[#00BA4A]" />
+                </div>
+                <div className="p-10 rounded-[3rem] bg-[#1A1C1E] text-white">
+                  <p className="text-[10px] font-black text-[#00BA4A] uppercase tracking-[0.3em] mb-4">Integrasi Cloud</p>
+                  <h3 className="text-xl font-serif font-bold mb-8">Data Anda Terlindungi Secara Real-time</h3>
+                  <Button className="w-full bg-[#00BA4A] hover:bg-[#009e3f] text-white font-black text-[10px] h-14 rounded-2xl shadow-xl shadow-green-900/20 tracking-[0.2em] border-none uppercase transition-all active:scale-95">
+                    <RefreshCcw className="h-4 w-4 mr-3" /> Sinkronisasi Paksa
                   </Button>
                 </div>
               </div>
@@ -363,34 +348,34 @@ export default function SettingsPage() {
 
             {/* 6. SUPPORT */}
             {activeTab === "support" && (
-              <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="text-center py-4">
-                  <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <HelpCircle className="h-8 w-8 text-slate-400" />
+              <div className="space-y-10 animate-in slide-in-from-bottom-2 duration-300">
+                <div className="text-center">
+                  <div className="h-20 w-20 bg-[#F8FAF9] dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                    <HelpCircle className="h-10 w-10 text-slate-400" />
                   </div>
-                  <h3 className="font-bold text-slate-800 dark:text-white">Butuh Bantuan?</h3>
-                  <p className="text-xs text-slate-500 px-8 mt-2 leading-relaxed">Tim support kami siap membantu operasional harian Anda 24/7.</p>
+                  <h3 className="font-serif font-bold text-2xl text-slate-800 dark:text-white tracking-tight leading-none">Pusat Bantuan</h3>
+                  <p className="text-sm text-slate-400 px-8 mt-3 font-medium">Layanan bantuan operasional 24 jam untuk kesuksesan bisnis Anda.</p>
                 </div>
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-black text-indigo-600 uppercase mb-1">Panduan Cepat</p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">Buka menu 'Database' untuk mencadangkan transaksi harian Anda secara berkala.</p>
+                <div className="space-y-4">
+                  <div className="p-8 rounded-[2.5rem] bg-[#F8FAF9] dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-black text-[#00BA4A] uppercase mb-2 tracking-widest leading-none underline underline-offset-4">Pro-Tip</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed italic">"Gunakan fitur Backup Cloud setiap akhir shift untuk keamanan data transaksi ganda."</p>
                   </div>
-                  <Button className="w-full bg-slate-900 dark:bg-white dark:text-slate-900 h-14 rounded-2xl font-black text-xs uppercase tracking-widest">
-                    <MessageSquare className="h-4 w-4 mr-2" /> Hubungi WhatsApp
+                  <Button className="w-full bg-[#1A1C1E] dark:bg-white dark:text-slate-900 h-16 rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.25em] shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95">
+                    <MessageSquare className="h-5 w-5 mr-3 text-[#00BA4A]" /> Hubungi WhatsApp Kami
                   </Button>
                 </div>
               </div>
             )}
 
             {/* ACTION BUTTONS */}
-            {activeTab !== "support" && (
-              <div className="pt-4 flex flex-col sm:flex-row gap-3">
-                <Button onClick={handleSave} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white h-12 rounded-xl font-bold shadow-lg transition-all" disabled={isSaving}>
-                  <Save className="h-4 w-4 mr-2" /> Save Changes
+            {activeTab && activeTab !== "support" && (
+              <div className="pt-8 flex flex-col sm:flex-row gap-4 border-t border-slate-50 dark:border-slate-800">
+                <Button onClick={handleSave} className="flex-1 bg-[#00BA4A] hover:bg-[#009e3f] text-white h-14 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-green-100 transition-all active:scale-95" disabled={isSaving}>
+                  <Save className="h-4 w-4 mr-3" /> Simpan Perubahan
                 </Button>
-                <Button variant="ghost" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="h-12 rounded-xl text-slate-400 font-bold">
-                  Cancel
+                <Button variant="ghost" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="h-14 rounded-2xl text-slate-300 font-black text-[10px] uppercase tracking-widest hover:text-slate-900 transition-colors">
+                  Batal
                 </Button>
               </div>
             )}
