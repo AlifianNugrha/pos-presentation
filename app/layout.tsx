@@ -1,40 +1,32 @@
+"use client" // Tambahkan ini karena kita menggunakan usePathname
+
 import type React from "react"
-import type { Metadata } from "next"
-// 1. Import Poppins dari Google Fonts
 import { Poppins } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 import { Sidebar } from "@/components/sidebar"
 import { ThemeProvider } from "@/components/theme-provider"
-// Import Toaster untuk notifikasi keren
 import { Toaster } from "sonner"
+import { usePathname } from "next/navigation" // Import usePathname
 
-// 2. Konfigurasi Poppins
 const poppins = Poppins({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800", "900"],
   variable: "--font-poppins",
 })
 
-// Metadata diperbarui: Menghapus semua referensi icons dan apple-icon
-export const metadata: Metadata = {
-  title: "POS Core - Sistem Kasir Modern",
-  description: "Sistem Point of Sale lengkap untuk restoran dan cafe",
-  generator: "v0.app",
-  icons: {
-    icon: [], // Mengosongkan ikon untuk menghilangkan logo v0/lainnya
-    apple: [], // Mengosongkan ikon perangkat Apple
-  },
-}
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const pathname = usePathname()
+
+  // Tentukan route mana saja yang tidak membutuhkan Sidebar
+  const isAuthPage = pathname === "/login" || pathname === "/register" || pathname === "/"
+
   return (
     <html lang="id" suppressHydrationWarning>
-      {/* 3. Terapkan class poppins di body */}
       <body className={`${poppins.className} antialiased`}>
         <ThemeProvider
           attribute="class"
@@ -42,7 +34,6 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {/* Konfigurasi Toaster */}
           <Toaster
             position="top-center"
             richColors
@@ -51,10 +42,16 @@ export default function RootLayout({
             theme="system"
           />
 
-          <Sidebar />
-          <div className="lg:pl-64 transition-all duration-300">
+          {/* Tampilkan Sidebar hanya jika bukan halaman Auth */}
+          {!isAuthPage && <Sidebar />}
+
+          {/* Gunakan class kondisional: 
+            Jika halaman Auth, padding kiri (lg:pl-64) dihapus agar konten ke tengah 
+          */}
+          <div className={`${!isAuthPage ? "lg:pl-64" : ""} transition-all duration-300`}>
             {children}
           </div>
+
           <Analytics />
         </ThemeProvider>
       </body>
