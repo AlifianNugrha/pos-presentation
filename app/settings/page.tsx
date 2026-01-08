@@ -26,9 +26,9 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false)
 
   const [settings, setSettings] = useState({
-    restaurantName: "Warung Makan Berkah",
-    phone: "0812345678",
-    address: "Jl. Merdeka No. 123, Jakarta Pusat",
+    restaurantName: "Memuat...",
+    phone: "",
+    address: "",
     footerMessage: "Terima kasih atas kunjungan Anda!",
     printerName: "Epson TM-T88V",
     printerIp: "192.168.1.100",
@@ -43,28 +43,41 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true)
-    const savedData = localStorage.getItem("pos_settings")
-    if (savedData) setSettings(JSON.parse(savedData))
+    initializeSettings()
     fetchStaffs()
   }, [])
 
+  const initializeSettings = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      const savedData = localStorage.getItem(`pos_settings_${user.id}`)
+      if (savedData) {
+        setSettings(JSON.parse(savedData))
+      } else {
+        setSettings(prev => ({
+          ...prev,
+          restaurantName: user.user_metadata?.restaurant_name || "Restoran Baru",
+          phone: user.phone || ""
+        }))
+      }
+    }
+  }
+
   const fetchStaffs = async () => {
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
+        .eq('user_id', user.id)
         .order('name', { ascending: true })
 
       if (error) throw error
 
       if (data) {
-        const colors = [
-          "bg-green-100 text-[#00BA4A]",
-          "bg-orange-100 text-[#FF5700]",
-          "bg-blue-100 text-blue-600",
-          "bg-slate-100 text-slate-600"
-        ]
-
+        const colors = ["bg-green-100 text-[#00BA4A]", "bg-orange-100 text-[#FF5700]", "bg-blue-100 text-blue-600", "bg-slate-100 text-slate-600"]
         const formattedData = data.map((s: any, i: number) => ({
           ...s,
           initial: s.name ? s.name.charAt(0).toUpperCase() : "?",
@@ -78,43 +91,39 @@ export default function SettingsPage() {
   }
 
   const handleSave = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     setIsSaving(true)
     await new Promise(resolve => setTimeout(resolve, 1000))
-    localStorage.setItem("pos_settings", JSON.stringify(settings))
+    localStorage.setItem(`pos_settings_${user.id}`, JSON.stringify(settings))
     window.dispatchEvent(new Event("storage"))
     setIsSaving(false)
     setSaveSuccess(true)
-    setTimeout(() => {
-      setSaveSuccess(false)
-      setActiveTab(null)
-    }, 1500)
+    setTimeout(() => { setSaveSuccess(false); setActiveTab(null); }, 1500)
   }
 
   const handleAddStaff = async () => {
     if (!newStaff.name) return
     setIsSaving(true)
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .insert([{ name: newStaff.name, role: newStaff.role }])
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles').insert([{ user_id: user.id, name: newStaff.name, role: newStaff.role }])
+      if (error) throw error
       await fetchStaffs()
       setNewStaff({ name: "", role: "Cashier" })
       setIsAddingStaff(false)
     } catch (error) {
       console.error("Error adding staff:", error)
-    } finally {
-      setIsSaving(false)
-    }
+    } finally { setIsSaving(false) }
   }
 
-  const deleteStaff = async (index: number) => {
-    const target = staffs[index]
+  const deleteStaff = async (id: string) => {
     try {
-      const { error } = await supabase.from('profiles').delete().eq('name', target.name)
-      if (!error) {
-        const updated = staffs.filter((_, i) => i !== index)
-        setStaffs(updated)
-      }
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { error } = await supabase.from('profiles').delete().eq('id', id).eq('user_id', user.id)
+      if (!error) setStaffs(prev => prev.filter(s => s.id !== id))
     } catch (error) {
       console.error("Error deleting staff:", error)
     }
@@ -133,14 +142,12 @@ export default function SettingsPage() {
 
   if (!activeTab) {
     return (
-      <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+      <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-[#00BA4A]/20">
         <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6">
           <div className="container mx-auto py-4 flex justify-between items-center">
             <div className="flex items-center gap-4">
               <Link href="/dashboard">
-                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100">
-                  <ArrowLeft className="h-5 w-5 text-[#00BA4A]" />
-                </Button>
+                <Button variant="ghost" size="icon" className="rounded-full hover:bg-slate-100"><ArrowLeft className="h-5 w-5 text-[#00BA4A]" /></Button>
               </Link>
               <div>
                 <h1 className="text-xl font-serif font-bold uppercase tracking-tight leading-none">Pengaturan <span className="text-[#00BA4A]">Sistem</span></h1>
@@ -156,33 +163,23 @@ export default function SettingsPage() {
             <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
               <div className="space-y-4">
                 <div className="flex items-center justify-center md:justify-start gap-2">
-                  <div className="p-2 bg-[#00BA4A]/20 rounded-xl backdrop-blur-md border border-[#00BA4A]/20">
-                    <Globe className="h-4 w-4 text-[#00BA4A]" />
-                  </div>
+                  <div className="p-2 bg-[#00BA4A]/20 rounded-xl backdrop-blur-md border border-[#00BA4A]/20"><Globe className="h-4 w-4 text-[#00BA4A]" /></div>
                   <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#00BA4A]">Terminal Aktif</span>
                 </div>
                 <div>
                   <h2 className="text-3xl font-serif font-bold italic tracking-tight">{settings.restaurantName}</h2>
-                  <p className="text-slate-400 text-sm font-medium mt-2 max-w-md">{settings.address}</p>
+                  <p className="text-slate-400 text-sm font-medium mt-2 max-w-md">{settings.address || "Alamat belum diatur"}</p>
                 </div>
               </div>
-              <div className="h-20 w-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:rotate-45 transition-transform duration-700">
-                <Store className="h-8 w-8 text-[#00BA4A]" />
-              </div>
+              <div className="h-20 w-20 bg-white/5 rounded-full flex items-center justify-center border border-white/10 group-hover:rotate-45 transition-transform duration-700"><Store className="h-8 w-8 text-[#00BA4A]" /></div>
             </div>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {sections.map((s) => (
-              <Card
-                key={s.id}
-                onClick={() => setActiveTab(s.id)}
-                className="p-8 cursor-pointer border-none bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group rounded-[2rem]"
-              >
+              <Card key={s.id} onClick={() => setActiveTab(s.id)} className="p-8 cursor-pointer border-none bg-white dark:bg-slate-900 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group rounded-[2rem]">
                 <div className="flex items-center justify-between mb-6">
-                  <div className={`h-14 w-14 rounded-2xl ${s.bg} ${s.color} flex items-center justify-center group-hover:scale-110 transition-transform`}>
-                    <s.icon className="h-7 w-7" />
-                  </div>
+                  <div className={`h-14 w-14 rounded-2xl ${s.bg} ${s.color} flex items-center justify-center group-hover:scale-110 transition-transform`}><s.icon className="h-7 w-7" /></div>
                   <ChevronRight className="h-5 w-5 text-slate-200 group-hover:text-[#00BA4A] group-hover:translate-x-1 transition-all" />
                 </div>
                 <h3 className="font-serif font-bold text-lg text-slate-800 dark:text-white mb-2">{s.title}</h3>
@@ -196,15 +193,11 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 font-sans">
+    <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 font-sans selection:bg-[#00BA4A]/20">
       <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4">
         <div className="container mx-auto flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="rounded-full hover:bg-slate-100 transition-colors">
-            <ArrowLeft className="h-5 w-5 text-[#00BA4A]" />
-          </Button>
-          <h1 className="text-xl font-serif font-bold text-slate-800 dark:text-white">
-            {sections.find(s => s.id === activeTab)?.title}
-          </h1>
+          <Button variant="ghost" size="icon" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="rounded-full hover:bg-slate-100 transition-colors"><ArrowLeft className="h-5 w-5 text-[#00BA4A]" /></Button>
+          <h1 className="text-xl font-serif font-bold text-slate-800 dark:text-white">{sections.find(s => s.id === activeTab)?.title}</h1>
         </div>
       </header>
 
@@ -219,9 +212,7 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-4 animate-in zoom-in duration-300">
-                  <div className="h-20 w-20 rounded-full bg-[#00BA4A]/10 flex items-center justify-center">
-                    <Check className="h-10 w-10 text-[#00BA4A]" />
-                  </div>
+                  <div className="h-20 w-20 rounded-full bg-[#00BA4A]/10 flex items-center justify-center"><Check className="h-10 w-10 text-[#00BA4A]" /></div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-[#00BA4A]">Sinkronisasi Berhasil</p>
                 </div>
               )}
@@ -229,16 +220,11 @@ export default function SettingsPage() {
           )}
 
           <div className="p-10 space-y-10">
-            {/* 1. RESTAURANT INFO */}
             {activeTab === "info" && (
               <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nama Unit Bisnis</Label>
-                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-serif font-bold px-6 focus-visible:ring-1 focus-visible:ring-[#00BA4A]" value={settings.restaurantName} onChange={(e) => setSettings({ ...settings, restaurantName: e.target.value })} />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Kontak Operasional</Label>
-                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold px-6" value={settings.phone} onChange={(e) => setSettings({ ...settings, phone: e.target.value })} />
+                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-serif font-bold px-6" value={settings.restaurantName} onChange={(e) => setSettings({ ...settings, restaurantName: e.target.value })} />
                 </div>
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Alamat Lengkap</Label>
@@ -247,52 +233,26 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* 2. DEVICE & PRINTER */}
-            {activeTab === "device" && (
-              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Identitas Printer</Label>
-                  <Input className="h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 border-none font-bold px-6" value={settings.printerName} onChange={(e) => setSettings({ ...settings, printerName: e.target.value })} />
-                </div>
-                <div className="p-8 rounded-[2rem] bg-[#F8FAF9] dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-1">
-                    <p className="text-sm font-serif font-bold text-slate-800 dark:text-white">Auto-Print Receipt</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">Cetak struk otomatis setelah bayar</p>
-                  </div>
-                  <Switch checked={settings.autoPrint} onCheckedChange={(val) => setSettings({ ...settings, autoPrint: val })} />
-                </div>
-              </div>
-            )}
-
-            {/* 3. USER MANAGEMENT */}
             {activeTab === "users" && (
               <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
                 <div className="flex items-center justify-between">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Daftar Staf Aktif</Label>
-                  <Button variant="ghost" onClick={() => setIsAddingStaff(!isAddingStaff)} className="text-[#00BA4A] text-[10px] font-black uppercase tracking-widest h-auto p-0 hover:bg-transparent">
-                    {isAddingStaff ? "Batal" : "+ Tambah Staf"}
-                  </Button>
+                  <Button variant="ghost" onClick={() => setIsAddingStaff(!isAddingStaff)} className="text-[#00BA4A] text-[10px] font-black uppercase tracking-widest h-auto p-0 hover:bg-transparent">{isAddingStaff ? "Batal" : "+ Tambah Staf"}</Button>
                 </div>
-
                 {isAddingStaff && (
                   <div className="p-8 rounded-[2.5rem] bg-green-50/30 dark:bg-green-950/20 border-2 border-dashed border-[#00BA4A]/20 space-y-4">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Sparkles className="h-4 w-4 text-[#00BA4A]" />
-                      <span className="text-[9px] font-black uppercase tracking-widest text-[#00BA4A]">Pendaftaran Akun</span>
-                    </div>
                     <Input placeholder="Nama Lengkap Staf" className="h-12 rounded-2xl border-none bg-white dark:bg-slate-800 font-bold px-6 shadow-sm" value={newStaff.name} onChange={(e) => setNewStaff({ ...newStaff, name: e.target.value })} />
-                    <select className="w-full h-12 rounded-2xl bg-white dark:bg-slate-800 border-none px-6 font-bold text-xs outline-none shadow-sm" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
+                    <select className="w-full h-12 rounded-2xl bg-white dark:bg-slate-800 border-none px-6 font-bold text-xs outline-none" value={newStaff.role} onChange={(e) => setNewStaff({ ...newStaff, role: e.target.value })}>
                       <option value="Cashier">Kasir / POS</option>
                       <option value="Waiter">Waiter / Pramusaji</option>
                       <option value="Owner">Manajer / Owner</option>
                     </select>
-                    <Button onClick={handleAddStaff} className="w-full bg-[#00BA4A] hover:bg-[#009e3f] h-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-green-100">Tambah Anggota</Button>
+                    <Button onClick={handleAddStaff} className="w-full bg-[#00BA4A] hover:bg-[#009e3f] h-12 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em]">Tambah Anggota</Button>
                   </div>
                 )}
-
                 <div className="space-y-4">
-                  {staffs.map((user, i) => (
-                    <div key={i} className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800 group hover:border-[#00BA4A]/30 transition-all">
+                  {staffs.map((user) => (
+                    <div key={user.id} className="p-6 rounded-[2rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800 group hover:border-[#00BA4A]/30 transition-all">
                       <div className="flex items-center gap-5">
                         <div className={`h-12 w-12 rounded-2xl ${user.color} flex items-center justify-center font-bold text-sm shadow-sm`}>{user.initial}</div>
                         <div>
@@ -300,83 +260,17 @@ export default function SettingsPage() {
                           <p className="text-[10px] text-[#00BA4A] font-bold uppercase tracking-widest mt-2">{user.role}</p>
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" onClick={() => deleteStaff(i)} className="h-10 w-10 text-slate-200 hover:text-rose-600 transition-colors">
-                        <Trash2 className="h-5 w-5" />
-                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => deleteStaff(user.id)} className="h-10 w-10 text-slate-200 hover:text-rose-600"><Trash2 className="h-5 w-5" /></Button>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* 4. SECURITY */}
-            {activeTab === "security" && (
-              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Akses Kasir (4-Digit PIN)</Label>
-                  <div className="flex gap-4">
-                    {[0, 1, 2, 3].map((i) => (
-                      <Input key={i} type="password" maxLength={1} className="h-16 w-full rounded-2xl bg-[#F8FAF9] dark:bg-slate-800 border-none text-center text-2xl font-serif font-bold shadow-inner" defaultValue={settings.cashierPin[i]} />
-                    ))}
-                  </div>
-                </div>
-                <div className="p-8 rounded-[2.5rem] bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between border border-slate-100 dark:border-slate-800">
-                  <div className="space-y-1 pr-10">
-                    <p className="text-sm font-serif font-bold text-slate-800 dark:text-white">Auto-Lock System</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Kunci layar otomatis setelah 5 menit</p>
-                  </div>
-                  <Switch checked={settings.autoLock} onCheckedChange={(val) => setSettings({ ...settings, autoLock: val })} />
-                </div>
-              </div>
-            )}
-
-            {/* 5. DATABASE */}
-            {activeTab === "database" && (
-              <div className="space-y-8 animate-in slide-in-from-bottom-2 duration-300 text-center">
-                <div className="h-24 w-24 bg-[#00BA4A]/10 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
-                  <Database className="h-10 w-10 text-[#00BA4A]" />
-                </div>
-                <div className="p-10 rounded-[3rem] bg-[#1A1C1E] text-white">
-                  <p className="text-[10px] font-black text-[#00BA4A] uppercase tracking-[0.3em] mb-4">Integrasi Cloud</p>
-                  <h3 className="text-xl font-serif font-bold mb-8">Data Anda Terlindungi Secara Real-time</h3>
-                  <Button className="w-full bg-[#00BA4A] hover:bg-[#009e3f] text-white font-black text-[10px] h-14 rounded-2xl shadow-xl shadow-green-900/20 tracking-[0.2em] border-none uppercase transition-all active:scale-95">
-                    <RefreshCcw className="h-4 w-4 mr-3" /> Sinkronisasi Paksa
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* 6. SUPPORT */}
-            {activeTab === "support" && (
-              <div className="space-y-10 animate-in slide-in-from-bottom-2 duration-300">
-                <div className="text-center">
-                  <div className="h-20 w-20 bg-[#F8FAF9] dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-6 border border-slate-100">
-                    <HelpCircle className="h-10 w-10 text-slate-400" />
-                  </div>
-                  <h3 className="font-serif font-bold text-2xl text-slate-800 dark:text-white tracking-tight leading-none">Pusat Bantuan</h3>
-                  <p className="text-sm text-slate-400 px-8 mt-3 font-medium">Layanan bantuan operasional 24 jam untuk kesuksesan bisnis Anda.</p>
-                </div>
-                <div className="space-y-4">
-                  <div className="p-8 rounded-[2.5rem] bg-[#F8FAF9] dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
-                    <p className="text-[10px] font-black text-[#00BA4A] uppercase mb-2 tracking-widest leading-none underline underline-offset-4">Pro-Tip</p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400 font-bold leading-relaxed italic">"Gunakan fitur Backup Cloud setiap akhir shift untuk keamanan data transaksi ganda."</p>
-                  </div>
-                  <Button className="w-full bg-[#1A1C1E] dark:bg-white dark:text-slate-900 h-16 rounded-[1.8rem] font-black text-[11px] uppercase tracking-[0.25em] shadow-xl shadow-slate-200 dark:shadow-none transition-all active:scale-95">
-                    <MessageSquare className="h-5 w-5 mr-3 text-[#00BA4A]" /> Hubungi WhatsApp Kami
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* ACTION BUTTONS */}
             {activeTab && activeTab !== "support" && (
               <div className="pt-8 flex flex-col sm:flex-row gap-4 border-t border-slate-50 dark:border-slate-800">
-                <Button onClick={handleSave} className="flex-1 bg-[#00BA4A] hover:bg-[#009e3f] text-white h-14 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-green-100 transition-all active:scale-95" disabled={isSaving}>
-                  <Save className="h-4 w-4 mr-3" /> Simpan Perubahan
-                </Button>
-                <Button variant="ghost" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="h-14 rounded-2xl text-slate-300 font-black text-[10px] uppercase tracking-widest hover:text-slate-900 transition-colors">
-                  Batal
-                </Button>
+                <Button onClick={handleSave} className="flex-1 bg-[#00BA4A] hover:bg-[#009e3f] text-white h-14 rounded-2xl font-black text-[11px] uppercase tracking-[0.2em] shadow-xl shadow-green-100 transition-all active:scale-95" disabled={isSaving}><Save className="h-4 w-4 mr-3" /> Simpan Perubahan</Button>
+                <Button variant="ghost" onClick={() => { setActiveTab(null); setIsAddingStaff(false); }} className="h-14 rounded-2xl text-slate-300 font-black text-[10px] uppercase tracking-widest hover:text-slate-900">Batal</Button>
               </div>
             )}
           </div>

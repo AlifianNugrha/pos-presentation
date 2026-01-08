@@ -29,9 +29,15 @@ export default function InsightPage() {
     const fetchData = async () => {
         setLoading(true)
         try {
+            // 1. Ambil User ID yang sedang aktif
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            // 2. Filter data pendapatan HANYA milik user tersebut
             const { data, error } = await supabase
                 .from('revenue')
                 .select('*')
+                .eq('user_id', user.id) // Filter Milik Sendiri
                 .order('created_at', { ascending: true })
 
             if (error) throw error
@@ -100,7 +106,7 @@ export default function InsightPage() {
             </header>
 
             <main className="container mx-auto px-6 py-10 max-w-6xl space-y-10 relative z-10 font-sans">
-
+                {/* Chart Section */}
                 <Card className="p-10 border-none shadow-2xl bg-[#1A1C1E] rounded-[2.5rem] relative overflow-hidden">
                     <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
                         style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '32px 32px' }} />
@@ -163,6 +169,7 @@ export default function InsightPage() {
                     </div>
                 </Card>
 
+                {/* Top Highlight Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <Card className="p-10 border-none bg-white dark:bg-slate-900 rounded-[2.5rem] relative overflow-hidden group shadow-sm transition-all hover:shadow-xl hover:shadow-[#00BA4A]/5">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-[#00BA4A]/5 rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-500" />
@@ -172,7 +179,7 @@ export default function InsightPage() {
                             </div>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Produk Terlaris</p>
                             <h2 className="text-3xl font-serif font-bold text-slate-800 dark:text-white tracking-tight italic">
-                                "{topProducts[0] ? topProducts[0][0] : "Memuat..."}"
+                                "{topProducts[0] ? topProducts[0][0] : "Belum Ada Data"}"
                             </h2>
                         </div>
                     </Card>
@@ -191,6 +198,7 @@ export default function InsightPage() {
                     </Card>
                 </div>
 
+                {/* Ranking Table Section */}
                 <Card className="border-none bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden shadow-sm">
                     <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex items-center justify-between">
                         <div className="flex items-center gap-4">
@@ -212,7 +220,6 @@ export default function InsightPage() {
                                         </span>
                                         <div className="space-y-3">
                                             <p className="font-serif font-bold text-lg text-slate-800 dark:text-white leading-none italic">{name}</p>
-                                            {/* PERBAIKAN: Menggunakan div alih-alih p untuk menghindari nesting div di dalam p */}
                                             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                                 <div className="w-1 h-1 rounded-full bg-[#00BA4A]" />
                                                 {count} Transaksi Berhasil

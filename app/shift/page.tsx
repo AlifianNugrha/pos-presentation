@@ -49,18 +49,27 @@ export default function ShiftPage() {
     }
 
     const loadStaffData = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         const { data, error } = await supabase
             .from('profiles')
             .select('name, role')
+            .eq('user_id', user.id) // Filter per user
             .order('name', { ascending: true })
+
         if (error) toast.error("Gagal memuat staff")
         else setStaffList(data || [])
     }
 
     const fetchActiveShift = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         const { data: shift } = await supabase
             .from('shifts')
             .select('*')
+            .eq('user_id', user.id) // Filter per user
             .eq('status', 'active')
             .maybeSingle()
 
@@ -68,6 +77,7 @@ export default function ShiftPage() {
             const { data: orders } = await supabase
                 .from('orders')
                 .select('total_amount')
+                .eq('user_id', user.id) // Filter per user
                 .gte('created_at', shift.start_time)
                 .in('status', ['paid', 'completed', 'success'])
 
@@ -80,9 +90,13 @@ export default function ShiftPage() {
     }
 
     const fetchShiftHistory = async () => {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
         const { data } = await supabase
             .from('shifts')
             .select('*')
+            .eq('user_id', user.id) // Filter per user
             .eq('status', 'closed')
             .order('end_time', { ascending: false })
             .limit(5)
@@ -96,15 +110,18 @@ export default function ShiftPage() {
         toast.success("Histori diperbarui")
     }
 
-    // FUNGSI HAPUS HISTORY
     const handleDeleteHistory = async (id: string) => {
         if (!confirm("Hapus catatan histori ini?")) return
 
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
             const { error } = await supabase
                 .from('shifts')
                 .delete()
                 .eq('id', id)
+                .eq('user_id', user.id) // Proteksi keamanan
 
             if (error) throw error
 
@@ -119,9 +136,13 @@ export default function ShiftPage() {
         if (!selectedStaff || !openingCash) return toast.error("Pilih staff & isi modal!")
         setIsProcessing(true)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
             const { data, error } = await supabase
                 .from('shifts')
                 .insert([{
+                    user_id: user.id, // Label pemilik data
                     pic_name: selectedStaff,
                     starting_cash: Number(openingCash),
                     shift_name: new Date().getHours() < 15 ? "PAGI" : "SORE",
@@ -129,6 +150,7 @@ export default function ShiftPage() {
                     start_time: new Date().toISOString()
                 }])
                 .select().single()
+
             if (error) throw error
             setCurrentShift(data)
             setRealtimeSales(0)
@@ -145,7 +167,11 @@ export default function ShiftPage() {
         setIsProcessing(true)
         const expected = (currentShift?.starting_cash || 0) + realtimeSales
         const variance = Number(actualCash) - expected
+
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
             const { error } = await supabase
                 .from('shifts')
                 .update({
@@ -156,6 +182,8 @@ export default function ShiftPage() {
                     notes: variance === 0 ? "BALANCE" : `SELISIH: ${variance}`
                 })
                 .eq('id', currentShift.id)
+                .eq('user_id', user.id) // Pastikan update milik sendiri
+
             if (error) throw error
             toast.success("Shift berhasil ditutup")
             setCurrentShift(null)
@@ -176,7 +204,6 @@ export default function ShiftPage() {
 
     return (
         <div className="min-h-screen bg-[#09090b] text-zinc-100 font-[family-name:var(--font-poppins)] pb-12">
-
             <header className="border-b border-zinc-900 bg-[#09090b]/90 backdrop-blur-md sticky top-0 z-40">
                 <div className="container mx-auto px-6 py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -344,7 +371,6 @@ export default function ShiftPage() {
                                                 </p>
                                             </div>
 
-                                            {/* TOMBOL HAPUS - Muncul saat Hover */}
                                             <Button
                                                 variant="ghost"
                                                 size="icon"

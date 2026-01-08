@@ -33,9 +33,9 @@ export default function TablesPage() {
   const [mounted, setMounted] = useState(false)
 
   const [tableStats, setTableStats] = useState({
-    total: 12,
+    total: 0,
     occupied: 0,
-    available: 12,
+    available: 0,
     reserved: 0
   })
 
@@ -48,16 +48,25 @@ export default function TablesPage() {
   const fetchTableStatus = useCallback(async () => {
     try {
       setIsRefreshing(true)
+
+      // Ambil user yang sedang login
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      // 1. Fetch Tables MILIK USER SENDIRI
       const { data: dbTables, error: tableError } = await supabase
         .from('tables')
         .select('*')
+        .eq('user_id', user.id) // Filter per user
         .order('number', { ascending: true })
 
       if (tableError) throw tableError
 
+      // 2. Fetch Orders MILIK USER SENDIRI
       const { data: activeOrders, error: orderError } = await supabase
         .from('orders')
         .select('*')
+        .eq('user_id', user.id) // Filter per user
         .in('status', ['pending', 'preparing', 'ready', 'served'])
 
       if (orderError) throw orderError
@@ -107,19 +116,29 @@ export default function TablesPage() {
   useEffect(() => {
     setMounted(true)
     fetchTableStatus()
+
+    // Realtime subscription yang aman (RLS di DB akan memfilter datanya)
     const channel = supabase
       .channel('table-live-updates')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => fetchTableStatus())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'tables' }, () => fetchTableStatus())
       .subscribe()
+
     return () => { supabase.removeChannel(channel) }
   }, [fetchTableStatus])
 
   const toggleReserve = async (tableNumber: number, currentStatus: TableStatus) => {
     if (tableNumber === 0) return
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
     const newStatus = currentStatus === "reserved" ? "available" : "reserved"
     try {
-      await supabase.from('tables').update({ status: newStatus }).eq('number', tableNumber)
+      await supabase
+        .from('tables')
+        .update({ status: newStatus })
+        .eq('number', tableNumber)
+        .eq('user_id', user.id) // Proteksi agar hanya mengubah data sendiri
     } catch (err) {
       console.error("Update Error:", err)
     }
@@ -133,7 +152,6 @@ export default function TablesPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-[#00BA4A]/20">
-      {/* Background Decor */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-0 left-0 w-[40%] h-[40%] bg-[#00BA4A]/5 rounded-full blur-[120px]" />
       </div>
@@ -164,7 +182,6 @@ export default function TablesPage() {
       </header>
 
       <main className="container mx-auto px-6 py-10 relative z-10">
-        {/* STATS SUMMARY - NATADESA STYLE */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
           <Card className="p-6 border-none shadow-sm bg-white dark:bg-slate-900 rounded-3xl group">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Total Kapasitas</p>
@@ -196,7 +213,6 @@ export default function TablesPage() {
           </Card>
         </div>
 
-        {/* GRID MEJA */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
           {tables.map((table) => {
             const isAvailable = table.status === "available";
@@ -208,7 +224,6 @@ export default function TablesPage() {
                 key={table.id}
                 className={`group relative overflow-hidden border-none shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 rounded-[2.5rem] bg-white dark:bg-slate-900 p-0`}
               >
-                {/* Status Indicator Bar */}
                 <div className={`h-2 w-full ${table.isTakeaway ? 'bg-[#FF5700]' : isAvailable ? 'bg-[#00BA4A]' : isOccupied ? 'bg-[#FF5700]' : 'bg-amber-400'}`} />
 
                 <div className="p-8">

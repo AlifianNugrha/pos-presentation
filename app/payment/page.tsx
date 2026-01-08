@@ -39,9 +39,14 @@ function PaymentContent() {
     async function getActiveOrder() {
       if (!tableNumber) return
       try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return
+
+        // PERBAIKAN: Menambahkan filter .eq('user_id', user.id)
         const { data, error } = await supabase
           .from('orders')
           .select('*')
+          .eq('user_id', user.id) // Filter per user
           .eq('table_number', parseInt(tableNumber))
           .in('status', ['pending', 'preparing', 'ready', 'served'])
           .order('created_at', { ascending: false })
@@ -150,9 +155,14 @@ function PaymentContent() {
     setIsProcessing(true)
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error("Sesi berakhir")
+
+      // 1. Simpan ke Tabel Revenue (Pendapatan) - Menambahkan user_id
       const { error: revenueError } = await supabase
         .from('revenue')
         .insert([{
+          user_id: user.id, // Kunci utama pemisah database
           order_id: orderId,
           table_number: parseInt(tableNumber),
           order_type: isTakeaway ? "takeaway" : "dine_in",
@@ -164,11 +174,21 @@ function PaymentContent() {
 
       if (revenueError) throw revenueError
 
+      // 2. Kosongkan meja (jika dine_in) - Filter user_id agar aman
       if (!isTakeaway) {
-        await supabase.from('tables').update({ status: 'available' }).eq('number', parseInt(tableNumber))
+        await supabase
+          .from('tables')
+          .update({ status: 'available' })
+          .eq('number', parseInt(tableNumber))
+          .eq('user_id', user.id)
       }
 
-      await supabase.from('orders').update({ status: 'completed' }).eq('id', orderId)
+      // 3. Selesaikan Order - Filter user_id
+      await supabase
+        .from('orders')
+        .update({ status: 'completed' })
+        .eq('id', orderId)
+        .eq('user_id', user.id)
 
       toast.success("Pembayaran Berhasil", { id: toastId })
       setIsPaid(true)
@@ -236,8 +256,6 @@ function PaymentContent() {
 
       <main className="container max-w-6xl mx-auto px-6 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-
-          {/* SISI KIRI: ORDER SUMMARY */}
           <div className="lg:col-span-5 space-y-8">
             <Card className="border-none shadow-sm rounded-[2.5rem] overflow-hidden bg-white dark:bg-slate-900">
               <div className="p-8 bg-[#F8FAF9] dark:bg-slate-800/50 flex items-center justify-between border-b border-slate-100">
@@ -276,7 +294,6 @@ function PaymentContent() {
             </Card>
           </div>
 
-          {/* SISI KANAN: PAYMENT SELECTION */}
           <div className="lg:col-span-7 space-y-8">
             <div className="grid grid-cols-3 gap-4">
               {paymentMethods.map((m) => (

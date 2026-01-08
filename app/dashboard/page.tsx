@@ -25,26 +25,29 @@ export default function DashboardPage() {
     lastSync: "--:--"
   })
 
-  // FUNGSI BARU: Ambil Nama Restoran dari Metadata Auth
   const fetchUserMetadata = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (user?.user_metadata?.restaurant_name) {
       return user.user_metadata.restaurant_name
     }
-    return "Warung Berkah" // Fallback
+    return "Restoran Anda"
   }
 
   const fetchStats = async () => {
     setIsSyncing(true)
     try {
-      const dynamicName = await fetchUserMetadata()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
+      const dynamicName = await fetchUserMetadata()
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
+      // PERBAIKAN: Menambahkan filter .eq('user_id', user.id)
       const { data, error } = await supabase
         .from('revenue')
         .select('total_amount, created_at')
+        .eq('user_id', user.id) // Filter Milik Sendiri
         .gte('created_at', today.toISOString())
 
       if (error) throw error
@@ -86,6 +89,7 @@ export default function DashboardPage() {
     setMounted(true)
     fetchStats()
 
+    // Realtime subscription yang difilter (RLS akan menangani keamanannya)
     const channel = supabase
       .channel('revenue-updates')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'revenue' }, () => fetchStats())
@@ -98,7 +102,6 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-[#00BA4A]/30 font-sans">
-      {/* Background Decorative Elements */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[10%] -left-[5%] w-[40%] h-[40%] bg-[#00BA4A]/5 rounded-full blur-3xl" />
         <div className="absolute top-[20%] -right-[10%] w-[30%] h-[50%] bg-[#FF5700]/5 rounded-full blur-3xl" />
@@ -131,7 +134,6 @@ export default function DashboardPage() {
       </header>
 
       <main className="container mx-auto px-6 py-10 relative z-10 space-y-10">
-        {/* Top Stats Row */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="p-8 border-none shadow-sm bg-white dark:bg-slate-900 rounded-[2.5rem] relative overflow-hidden group transition-all">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#00BA4A]/5 rounded-full -mr-16 -mt-16 transition-transform group-hover:scale-110" />
@@ -169,7 +171,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Analytics Section */}
         <Card className="relative p-10 border-none shadow-2xl bg-[#1A1C1E] dark:bg-slate-900 rounded-[3rem] overflow-hidden">
           <div className="absolute inset-0 opacity-[0.07] pointer-events-none"
             style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '32px 32px' }} />
@@ -212,7 +213,6 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        {/* Quick Links Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pb-10">
           <Link href="/orders" className="block group">
             <div className="bg-white dark:bg-slate-900 p-8 rounded-[2.5rem] shadow-sm hover:shadow-[0_10px_40px_-10px_rgba(0,186,74,0.4)] hover:-translate-y-1 transition-all border border-slate-100 dark:border-slate-800 flex items-center justify-between">

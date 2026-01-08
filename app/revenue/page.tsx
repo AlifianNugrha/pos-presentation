@@ -43,9 +43,15 @@ export default function RevenuePage() {
     const fetchRevenue = async () => {
         setLoading(true)
         try {
+            // 1. Ambil User aktif
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            // 2. Filter HANYA milik user tersebut
             const { data, error } = await supabase
                 .from('revenue')
                 .select('*')
+                .eq('user_id', user.id) // Filter Milik Sendiri
                 .order('created_at', { ascending: false })
 
             if (error) throw error
@@ -90,14 +96,18 @@ export default function RevenuePage() {
     const handleResetRevenue = async () => {
         setLoading(true)
         try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error("Sesi berakhir")
+
+            // PERBAIKAN FATAL: Tambahkan filter user_id agar tidak menghapus data orang lain!
             const { error } = await supabase
                 .from('revenue')
                 .delete()
-                .neq('id', '00000000-0000-0000-0000-000000000000')
+                .eq('user_id', user.id) // Hanya hapus milik user yang sedang login
 
             if (error) throw error
             setRevenueData([])
-            toast.success("Penjualan telah di-reset.")
+            toast.success("Seluruh histori penjualan Anda telah di-reset.")
         } catch (err: any) {
             toast.error("Gagal reset: " + err.message)
         } finally {
@@ -130,14 +140,14 @@ export default function RevenuePage() {
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="outline" className="rounded-full border-slate-200 text-slate-400 hover:text-red-600 hover:bg-red-50 text-[10px] font-bold uppercase tracking-widest px-6 h-10 transition-all">
-                                <RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset
+                                <RotateCcw className="h-3.5 w-3.5 mr-2" /> Reset Akun Anda
                             </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl">
                             <AlertDialogHeader>
                                 <AlertDialogTitle className="font-serif text-2xl">Hapus Histori Penjualan?</AlertDialogTitle>
                                 <AlertDialogDescription className="text-slate-500 font-medium">
-                                    Tindakan ini akan menghapus seluruh catatan pendapatan secara permanen dari basis data.
+                                    Tindakan ini akan menghapus seluruh catatan pendapatan milik Anda secara permanen. Data user lain tidak akan terpengaruh.
                                 </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter className="gap-2">
@@ -150,7 +160,6 @@ export default function RevenuePage() {
             </header>
 
             <main className="container mx-auto px-6 py-10 max-w-6xl space-y-10 relative z-10">
-                {/* STATS SECTION */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {[
                         { label: "Total Pendapatan", value: `Rp ${totalRevenue.toLocaleString("id-ID")}`, icon: TrendingUp, color: "text-[#00BA4A]", bg: "bg-[#00BA4A]/10" },
@@ -167,7 +176,6 @@ export default function RevenuePage() {
                     ))}
                 </div>
 
-                {/* TAB SELECTOR */}
                 <div className="flex bg-slate-200/50 dark:bg-slate-800 p-1.5 rounded-[2rem] w-fit border border-slate-100">
                     <button
                         onClick={() => setActiveTab('dine_in')}
@@ -183,7 +191,6 @@ export default function RevenuePage() {
                     </button>
                 </div>
 
-                {/* TABLE SECTION */}
                 <Card className="border-none shadow-sm bg-white dark:bg-slate-900 rounded-[3rem] overflow-hidden flex flex-col">
                     <div className="p-10 border-b border-slate-50 dark:border-slate-800 flex justify-between items-center">
                         <div className="flex items-center gap-4">
@@ -242,11 +249,10 @@ export default function RevenuePage() {
                         </table>
                     </div>
 
-                    {/* HIJAU MENYALA EXPORT BUTTON */}
                     <div className="p-10 border-t bg-slate-50/50 dark:bg-slate-800/30 flex flex-col sm:flex-row items-center justify-between gap-6">
                         <div className="flex items-center gap-3 text-slate-400">
                             <Wallet className="h-4 w-4 text-[#00BA4A]" />
-                            <p className="text-[10px] font-bold uppercase tracking-widest italic leading-none">Arsip Keuangan Digital Natadesa</p>
+                            <p className="text-[10px] font-bold uppercase tracking-widest italic leading-none">Arsip Keuangan Digital Pribadi</p>
                         </div>
                         <Button
                             onClick={exportToCSV}

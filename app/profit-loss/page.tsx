@@ -31,6 +31,7 @@ export default function ProfitLossPage() {
     useEffect(() => {
         fetchFinancialData()
 
+        // Realtime subscription yang aman (RLS di DB akan memfilter datanya)
         const channelRev = supabase.channel('rev-update').on('postgres_changes',
             { event: '*', schema: 'public', table: 'revenue' }, () => fetchFinancialData()).subscribe()
         const channelExp = supabase.channel('exp-update').on('postgres_changes',
@@ -45,10 +46,24 @@ export default function ProfitLossPage() {
     const fetchFinancialData = async () => {
         setLoading(true)
         try {
-            const { data: revData } = await supabase.from('revenue').select('total_amount')
+            // 1. Ambil User ID yang sedang aktif
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            // 2. Fetch Revenue MILIK USER SENDIRI
+            const { data: revData } = await supabase
+                .from('revenue')
+                .select('total_amount')
+                .eq('user_id', user.id) // Filter per user
+
             const totalIncome = revData?.reduce((acc, curr) => acc + (curr.total_amount || 0), 0) || 0
 
-            const { data: expData } = await supabase.from('expenses').select('amount')
+            // 3. Fetch Expenses MILIK USER SENDIRI
+            const { data: expData } = await supabase
+                .from('expenses')
+                .select('amount')
+                .eq('user_id', user.id) // Filter per user
+
             const totalExpenses = expData?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0
 
             const netProfit = totalIncome - totalExpenses
@@ -91,7 +106,6 @@ export default function ProfitLossPage() {
 
     return (
         <div className="min-h-screen bg-[#F8FAF9] dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-[#00BA4A]/20 pb-12">
-            {/* Header Style Natadesa */}
             <header className="border-b bg-white/80 dark:bg-slate-900/80 backdrop-blur-md sticky top-0 z-40 px-6">
                 <div className="container mx-auto py-4 flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -118,9 +132,8 @@ export default function ProfitLossPage() {
 
             <main className="container mx-auto px-6 py-10 max-w-5xl space-y-8 relative z-10 font-sans">
 
-                {/* Main Profit Card - Dark Style Natadesa */}
+                {/* Main Profit Card */}
                 <Card className="p-10 border-none bg-[#1A1C1E] rounded-[2.5rem] relative overflow-hidden shadow-2xl group transition-all duration-500 hover:shadow-[#00BA4A]/10">
-                    {/* Pattern Overlay */}
                     <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
                         style={{ backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`, backgroundSize: '32px 32px' }} />
 
@@ -156,7 +169,6 @@ export default function ProfitLossPage() {
 
                 {/* Breakdown Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* Income Card */}
                     <Card className="p-8 border-none bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
@@ -174,7 +186,6 @@ export default function ProfitLossPage() {
                         </div>
                     </Card>
 
-                    {/* Expense Card */}
                     <Card className="p-8 border-none bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-sm hover:shadow-xl transition-all duration-300">
                         <div className="flex items-center justify-between mb-8">
                             <div className="flex items-center gap-4">
@@ -210,7 +221,6 @@ export default function ProfitLossPage() {
                     </div>
 
                     <div className="divide-y divide-slate-50 dark:divide-slate-800">
-                        {/* INFLOW */}
                         <div className="flex items-center justify-between p-10 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all group cursor-default">
                             <div className="flex items-center gap-8">
                                 <div className="h-14 w-14 rounded-[1.5rem] bg-[#00BA4A]/5 text-[#00BA4A] flex items-center justify-center font-serif font-bold text-sm border border-[#00BA4A]/10 group-hover:bg-[#00BA4A] group-hover:text-white transition-all duration-300 shadow-sm">IN</div>
@@ -222,7 +232,6 @@ export default function ProfitLossPage() {
                             <p className="text-xl font-serif font-bold text-[#00BA4A] group-hover:translate-x-[-10px] transition-transform">+ Rp {data.income.toLocaleString("id-ID")}</p>
                         </div>
 
-                        {/* OUTFLOW */}
                         <div className="flex items-center justify-between p-10 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-all group cursor-default">
                             <div className="flex items-center gap-8">
                                 <div className="h-14 w-14 rounded-[1.5rem] bg-[#FF5700]/5 text-[#FF5700] flex items-center justify-center font-serif font-bold text-sm border border-[#FF5700]/10 group-hover:bg-[#FF5700] group-hover:text-white transition-all duration-300 shadow-sm">OUT</div>
@@ -236,7 +245,6 @@ export default function ProfitLossPage() {
                     </div>
                 </Card>
 
-                {/* Footer Action - HIJAU MENYALA */}
                 <div className="pt-10 flex flex-col sm:flex-row items-center justify-between gap-8 border-t border-slate-200 dark:border-slate-800">
                     <div className="flex items-center gap-4 text-slate-400 group cursor-default">
                         <div className="p-3 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 group-hover:border-[#00BA4A] transition-colors"><Wallet className="h-5 w-5 text-[#00BA4A]" /></div>
@@ -247,9 +255,9 @@ export default function ProfitLossPage() {
                     </div>
                     <Button
                         onClick={exportToCSV}
-                        className="w-full sm:w-auto rounded-[1.8rem] bg-[#00BA4A] hover:bg-[#009e3f] text-white gap-4 h-16 px-12 font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_40px_-15px_rgba(0,186,74,0.3)] dark:shadow-none transition-all active:scale-95 flex items-center justify-center"
+                        className="w-full sm:w-auto rounded-[1.8rem] bg-[#00BA4A] hover:bg-[#009e3f] text-white gap-4 h-16 px-12 font-bold text-[11px] uppercase tracking-[0.3em] shadow-[0_20px_40px_-15px_rgba(0,186,74,0.3)] transition-all active:scale-95 flex items-center justify-center"
                     >
-                        <FileSpreadsheet className="h-5 w-5 text-white animate-bounce-subtle" />
+                        <FileSpreadsheet className="h-5 w-5 text-white" />
                         Export Laporan (.CSV)
                     </Button>
                 </div>
